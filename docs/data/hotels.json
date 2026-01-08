@@ -1,1 +1,8 @@
+{
+  "hotels": [
+    { "name": "Truck Rest Hotel", "city": "Warsaw", "type": "Motel", "stars": 3, "parkingTruck": true, "lat": 52.25, "lng": 21.00 },
+    { "name": "Highway Inn", "city": "Lodz", "type": "Hotel", "stars": 4, "parkingTruck": true, "lat": 51.77, "lng": 19.45 },
+    { "name": "City Sleep", "city": "Poznan", "type": "Hotel", "stars": 3, "parkingTruck": false, "lat": 52.40, "lng": 16.92 }
+  ]
+}
 
