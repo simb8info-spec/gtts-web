@@ -1,1 +1,8 @@
+{
+  "stations": [
+    { "name": "FuelStop A1", "brand": "PartnerX", "city": "Warsaw", "price": "1.54", "currency": "EUR", "discountPct": 8, "lat": 52.2297, "lng": 21.0122 },
+    { "name": "TruckFuel Hub", "brand": "PartnerY", "city": "Lodz", "price": "1.49", "currency": "EUR", "discountPct": 6, "lat": 51.7592, "lng": 19.4560 },
+    { "name": "Highway Diesel Point", "brand": "PartnerZ", "city": "Poznan", "price": "1.57", "currency": "EUR", "discountPct": 7, "lat": 52.4064, "lng": 16.9252 }
+  ]
+}
 
