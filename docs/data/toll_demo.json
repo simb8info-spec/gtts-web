@@ -1,1 +1,7 @@
+{
+  "routes": [
+    { "name": "A2 Demo Segment", "from": "Poznan", "to": "Warsaw", "country": "PL", "class": "N3", "axles": 5, "estimate": 38.5, "currency": "EUR" },
+    { "name": "A1 Demo Segment", "from": "Lodz", "to": "Gdansk", "country": "PL", "class": "N2", "axles": 4, "estimate": 22.0, "currency": "EUR" }
+  ]
+}
 
