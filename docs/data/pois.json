@@ -1,1 +1,8 @@
+{
+  "places": [
+    { "name": "Old Town", "category": "Sightseeing", "city": "Warsaw", "openNow": true, "lat": 52.2497, "lng": 21.0120 },
+    { "name": "Museum of Transport", "category": "Museum", "city": "Lodz", "openNow": false, "lat": 51.7630, "lng": 19.4580 },
+    { "name": "City Park", "category": "Nature", "city": "Poznan", "openNow": true, "lat": 52.4090, "lng": 16.9300 }
+  ]
+}
 
