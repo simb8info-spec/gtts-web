@@ -1,528 +1,725 @@
-/* GTTS MVP Web (GitHub Pages friendly)
- * - No frameworks
- * - No white screens: we never hide the whole page
- * - Modules render into #view
- * - Demo data loaded from /docs/data/*.json
+/* GTTS MVP Web (GitHub Pages friendly) — rewritten stable version
+ * Goals:
+ * - No framework
+ * - No white screens: JS errors must not break the UI
+ * - No replaceAll: broad browser compatibility
+ * - Drawer/menu buttons always work
+ * - Safe JSON loading (fallback UI on failure)
+ * - Simple toast (non-blocking)
  */
 
-const KEY_LANG = "gtts_lang";
-const KEY_POS  = "gtts_pos"; // {lat, lng}
+(function () {
+  "use strict";
 
-const els = {
-  drawer: document.getElementById("drawer"),
-  backdrop: document.getElementById("backdrop"),
-  btnMenu: document.getElementById("btnMenu"),
-  btnClose: document.getElementById("btnClose"),
-  btnLocate: document.getElementById("btnLocate"),
-  btnShare: document.getElementById("btnShare"),
-  lang: document.getElementById("lang"),
-  viewTitle: document.getElementById("viewTitle"),
-  view: document.getElementById("view"),
-  coord: document.getElementById("coord"),
-  pill: document.getElementById("pillStatus"),
-};
+  var KEY_LANG = "gtts_lang";
+  var KEY_POS = "gtts_pos"; // {lat,lng,country?}
+  var ROUTES = ["navigator", "tolls", "fuel", "hotels", "nearby"];
 
-const ROUTES = ["navigator","tolls","fuel","hotels","nearby"];
+  // ---------- DOM helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function $all(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
 
-const i18n = buildI18n(); // full EU list (short but complete keys)
-
-// ---------- Drawer ----------
-els.btnMenu?.addEventListener("click", openDrawer);
-els.btnClose?.addEventListener("click", closeDrawer);
-els.backdrop?.addEventListener("click", closeDrawer);
-
-document.querySelectorAll(".navItem").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const r = btn.getAttribute("data-route");
-    navigate(r || "navigator");
-    closeDrawer();
-  });
-});
-
-// ---------- Language ----------
-const savedLang = safeGet(KEY_LANG) || detectLang();
-if (els.lang) els.lang.value = (i18n[savedLang] ? savedLang : "en");
-applyLang(els.lang?.value || "en");
-els.lang?.addEventListener("change", (e) => {
-  const lang = e.target.value;
-  safeSet(KEY_LANG, lang);
-  applyLang(lang);
-  // rerender current route in selected language
-  const route = currentRoute();
-  navigate(route, {replace:true});
-});
-
-// ---------- Locate ----------
-els.btnLocate?.addEventListener("click", async () => {
-  els.pill.textContent = t("ui.working");
-  try {
-    const pos = await getGeolocation();
-    safeSet(KEY_POS, JSON.stringify(pos));
-    updateCoord();
-    els.pill.textContent = t("ui.ready");
-    // Refresh module view to use new position (nearby results etc.)
-    navigate(currentRoute(), {replace:true});
-  } catch (e) {
-    els.pill.textContent = t("ui.demo");
-    toast(t("err.location"));
-  }
-});
-
-// ---------- Share ----------
-els.btnShare?.addEventListener("click", async () => {
-  const url = location.href;
-  try {
-    await navigator.clipboard.writeText(url);
-    toast(t("ui.copied"));
-  } catch {
-    prompt(t("ui.copyPrompt"), url);
-  }
-});
-
-// ---------- Router ----------
-window.addEventListener("hashchange", () => navigate(currentRoute(), {replace:true}));
-
-// ---------- PWA SW ----------
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(()=>{});
-}
-
-// ---------- Start ----------
-updateCoord();
-navigate(currentRoute(), {replace:true});
-
-// ================================
-// Rendering
-// ================================
-async function navigate(route, opts = {}) {
-  if (!ROUTES.includes(route)) route = "navigator";
-  if (!opts.replace) location.hash = `#${route}`;
-
-  setActive(route);
-
-  switch(route) {
-    case "navigator":
-      els.viewTitle.textContent = t("nav.navigator");
-      els.view.innerHTML = renderNavigator();
-      break;
-
-    case "tolls":
-      els.viewTitle.textContent = t("nav.tolls");
-      els.view.innerHTML = await renderTolls();
-      break;
-
-    case "fuel":
-      els.viewTitle.textContent = t("nav.fuel");
-      els.view.innerHTML = await renderFuel();
-      break;
-
-    case "hotels":
-      els.viewTitle.textContent = t("nav.hotels");
-      els.view.innerHTML = await renderHotels();
-      break;
-
-    case "nearby":
-      els.viewTitle.textContent = t("nav.nearby");
-      els.view.innerHTML = await renderNearby();
-      break;
-  }
-}
-
-function renderNavigator() {
-  const pos = getPos();
-  return `
-    <h3 class="sectionTitle">${t("nav.navigator")}</h3>
-    <div class="kv">
-      <div class="k">${t("nav.position")}</div>
-      <div class="v">${pos ? `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}` : t("nav.posUnknown")}</div>
-    </div>
-
-    <div class="hr"></div>
-
-    <div class="item">
-      <div class="itemTitle">${t("nav.bestNav")}</div>
-      <div class="itemSub">${t("nav.bestNavDesc")}</div>
-      <div class="row">
-        ${chip("Google Maps")} ${chip("Waze")} ${chip("HERE WeGo")} ${chip("TomTom")} ${chip("Sygic")}
-      </div>
-    </div>
-
-    <div class="item">
-      <div class="itemTitle">${t("nav.routeDemo")}</div>
-      <div class="itemSub">${t("nav.routeDemoDesc")}</div>
-      <div class="row">
-        <button class="btn" onclick="toast('${escapeJs(t("nav.routeToast"))}')">▶ ${escapeHtml(t("ui.open"))}</button>
-      </div>
-    </div>
-
-    <div class="note">${t("nav.mvpNote")}</div>
-  `;
-}
-
-async function renderTolls() {
-  const data = await loadJson("data/toll_demo.json");
-  const pos = getPos();
-  const country = pos?.country || "EU";
-
-  const list = data.routes.map(r => `
-    <div class="item">
-      <div class="itemTop">
-        <div>
-          <div class="itemTitle">${escapeHtml(r.name)}</div>
-          <div class="itemSub">${escapeHtml(r.from)} → ${escapeHtml(r.to)}</div>
-        </div>
-        <div class="badge">${escapeHtml(r.currency)} ${escapeHtml(String(r.estimate))}</div>
-      </div>
-      <div class="row">
-        ${chip(`${t("tolls.class")}: ${escapeHtml(r.class)}`)}
-        ${chip(`${t("tolls.axles")}: ${escapeHtml(String(r.axles))}`)}
-        ${chip(`${t("tolls.country")}: ${escapeHtml(r.country)}`)}
-      </div>
-      <div class="row">
-        <button class="btn" onclick="toast('${escapeJs(t("tolls.demoPay"))}')">🛣️ ${escapeHtml(t("tolls.pay"))}</button>
-      </div>
-    </div>
-  `).join("");
-
-  return `
-    <h3 class="sectionTitle">${t("nav.tolls")}</h3>
-    <div class="item">
-      <div class="itemTitle">${t("tolls.miniCalc")}</div>
-      <div class="itemSub">${t("tolls.miniCalcDesc")} (${escapeHtml(country)})</div>
-      <div class="row">
-        ${chip("EETS-ready (phase)")} ${chip("OBU replacement path")}
-      </div>
-    </div>
-    <div class="hr"></div>
-    <div class="list">${list}</div>
-    <div class="note">${t("tolls.note")}</div>
-  `;
-}
-
-async function renderFuel() {
-  const data = await loadJson("data/fuel_stations.json");
-  const pos = getPos();
-
-  const list = data.stations.map(s => `
-    <div class="item">
-      <div class="itemTop">
-        <div>
-          <div class="itemTitle">${escapeHtml(s.name)}</div>
-          <div class="itemSub">${escapeHtml(s.city)} • ${escapeHtml(s.brand)}</div>
-        </div>
-        <div class="badge">-${escapeHtml(String(s.discountPct))}%</div>
-      </div>
-      <div class="row">
-        ${chip(`${t("fuel.price")}: ${escapeHtml(s.price)} ${escapeHtml(s.currency)}/L`)}
-        ${chip(`${t("fuel.distance")}: ${pos ? km(pos, s).toFixed(1) : "—"} km`)}
-      </div>
-      <div class="row">
-        <button class="btn" onclick="toast('${escapeJs(t("fuel.demoStart"))}')">⛽ ${escapeHtml(t("fuel.start"))}</button>
-        <button class="btnGhost" onclick="toast('${escapeJs(t("ui.soon"))}')">💳 ${escapeHtml(t("fuel.credit"))}</button>
-      </div>
-    </div>
-  `).join("");
-
-  return `
-    <h3 class="sectionTitle">${t("nav.fuel")}</h3>
-    <div class="item">
-      <div class="itemTitle">${t("fuel.discount")}</div>
-      <div class="itemSub">${t("fuel.discountDesc")}</div>
-      <div class="row">${chip("UTA-like")} ${chip("DKV-like")} ${chip("E100-like")}</div>
-    </div>
-    <div class="hr"></div>
-    <div class="list">${list}</div>
-  `;
-}
-
-async function renderHotels() {
-  const data = await loadJson("data/hotels.json");
-  const pos = getPos();
-
-  const list = data.hotels.map(h => `
-    <div class="item">
-      <div class="itemTop">
-        <div>
-          <div class="itemTitle">${escapeHtml(h.name)}</div>
-          <div class="itemSub">${escapeHtml(h.city)} • ${escapeHtml(h.type)}</div>
-        </div>
-        <div class="badge">${"★".repeat(h.stars || 3)}</div>
-      </div>
-      <div class="row">
-        ${chip(`${t("hotels.parking")}: ${h.parkingTruck ? t("ui.yes") : t("ui.no")}`)}
-        ${chip(`${t("hotels.distance")}: ${pos ? km(pos, h).toFixed(1) : "—"} km`)}
-      </div>
-      <div class="row">
-        <button class="btn" onclick="toast('${escapeJs(t("hotels.demoBook"))}')">🏨 ${escapeHtml(t("hotels.book"))}</button>
-      </div>
-    </div>
-  `).join("");
-
-  return `
-    <h3 class="sectionTitle">${t("nav.hotels")}</h3>
-    <div class="item">
-      <div class="itemTitle">${t("hotels.driverRest")}</div>
-      <div class="itemSub">${t("hotels.driverRestDesc")}</div>
-      <div class="row">${chip("Truck parking")} ${chip("Safe rest")} ${chip("Partner integrations")}</div>
-    </div>
-    <div class="hr"></div>
-    <div class="list">${list}</div>
-  `;
-}
-
-async function renderNearby() {
-  const data = await loadJson("data/pois.json");
-  const pos = getPos();
-
-  const sorted = data.places
-    .map(p => ({...p, d: pos ? km(pos, p) : null}))
-    .sort((a,b) => (a.d ?? 1e9) - (b.d ?? 1e9));
-
-  const list = sorted.slice(0, 10).map(p => `
-    <div class="item">
-      <div class="itemTop">
-        <div>
-          <div class="itemTitle">${escapeHtml(p.name)}</div>
-          <div class="itemSub">${escapeHtml(p.category)} • ${escapeHtml(p.city)}</div>
-        </div>
-        <div class="badge">${pos ? `${p.d.toFixed(1)} km` : "—"}</div>
-      </div>
-      <div class="row">
-        ${chip(`${t("nearby.openNow")}: ${p.openNow ? t("ui.yes") : t("ui.no")}`)}
-        ${chip(`${t("nearby.type")}: ${escapeHtml(p.category)}`)}
-      </div>
-      <div class="row">
-        <button class="btn" onclick="toast('${escapeJs(t("nearby.demoRoute"))}')">🧭 ${escapeHtml(t("nearby.route"))}</button>
-      </div>
-    </div>
-  `).join("");
-
-  return `
-    <h3 class="sectionTitle">${t("nav.nearby")}</h3>
-    <div class="item">
-      <div class="itemTitle">${t("nearby.find")}</div>
-      <div class="itemSub">${t("nearby.findDesc")}</div>
-    </div>
-    <div class="hr"></div>
-    <div class="list">${list}</div>
-  `;
-}
-
-// ================================
-// Utilities
-// ================================
-function openDrawer(){
-  els.drawer.classList.add("open");
-  els.drawer.setAttribute("aria-hidden", "false");
-  els.backdrop.hidden = false;
-}
-function closeDrawer(){
-  els.drawer.classList.remove("open");
-  els.drawer.setAttribute("aria-hidden", "true");
-  els.backdrop.hidden = true;
-}
-function setActive(route){
-  document.querySelectorAll(".navItem").forEach(b => {
-    b.classList.toggle("active", b.getAttribute("data-route") === route);
-  });
-}
-function currentRoute(){
-  const h = (location.hash || "").replace("#","");
-  return ROUTES.includes(h) ? h : "navigator";
-}
-
-function toast(msg){
-  // simple, safe MVP notification
-  alert(msg);
-}
-
-function updateCoord(){
-  const pos = getPos();
-  els.coord.textContent = pos ? `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}` : "—";
-}
-
-function getPos(){
-  const raw = safeGet(KEY_POS);
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
-
-function detectLang(){
-  const raw = (navigator.language || "en").toLowerCase();
-  const code = raw.includes("-") ? raw.split("-")[0] : raw;
-  return (code === "ua") ? "uk" : code;
-}
-
-function applyLang(lang){
-  document.documentElement.lang = lang;
-  const dict = i18n[lang] || i18n.en;
-
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const key = el.getAttribute("data-i18n");
-    const v = dict[key] ?? i18n.en[key];
-    if (v != null) el.textContent = v;
-  });
-
-  // update UI strings after apply
-  els.pill.textContent = t("ui.demo");
-}
-
-function t(key){
-  const lang = els.lang?.value || "en";
-  const dict = i18n[lang] || i18n.en;
-  return dict[key] ?? i18n.en[key] ?? key;
-}
-
-async function loadJson(path){
-  // always cache-bust via pages version changes? no. Keep simple.
-  const res = await fetch(path, {cache: "no-store"});
-  if (!res.ok) throw new Error(`Failed to load ${path}`);
-  return await res.json();
-}
-
-function safeGet(k){
-  try { return localStorage.getItem(k); } catch { return null; }
-}
-function safeSet(k, v){
-  try { localStorage.setItem(k, v); } catch {}
-}
-
-function km(pos, item){
-  // Haversine
-  const R = 6371;
-  const dLat = toRad(item.lat - pos.lat);
-  const dLon = toRad(item.lng - pos.lng);
-  const a =
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(toRad(pos.lat)) * Math.cos(toRad(item.lat)) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-function toRad(x){ return x * Math.PI / 180; }
-
-async function getGeolocation(){
-  if (!navigator.geolocation) throw new Error("No geolocation");
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve({
-        lat: p.coords.latitude,
-        lng: p.coords.longitude,
-        // optional: you can later reverse-geocode to country
-        country: "EU"
-      }),
-      (e) => reject(e),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-    );
-  });
-}
-
-function chip(text){
-  return `<span class="chip">${escapeHtml(text)}</span>`;
-}
-
-function escapeHtml(s){
-  return String(s)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-function escapeJs(s){
-  return String(s).replaceAll("\\","\\\\").replaceAll("'","\\'");
-}
-
-// ================================
-// i18n dictionary (compact but working)
-// ================================
-function buildI18n(){
-  // Key set used in UI
-  const en = {
-    "ui.locate":"Locate",
-    "ui.share":"Share",
-    "ui.open":"Open",
-    "ui.soon":"Soon",
-    "ui.yes":"Yes",
-    "ui.no":"No",
-    "ui.demo":"Demo",
-    "ui.ready":"Ready",
-    "ui.working":"Working…",
-    "ui.copied":"Link copied",
-    "ui.copyPrompt":"Copy link:",
-    "err.location":"Location not available. Allow location permission or use demo mode.",
-    "drawer.note":"MVP demo. Map is a placeholder. Next step: integrate real Maps/Places and partner APIs.",
-    "map.title":"Map",
-    "map.placeholder":"Map placeholder (MVP). Click “Locate” to set your position, then browse modules.",
-    "map.coord":"Coordinates:",
-    "nav.navigator":"Navigator",
-    "nav.tolls":"Tolls",
-    "nav.fuel":"Fuel",
-    "nav.hotels":"Hotels",
-    "nav.nearby":"Nearby",
-    "nav.position":"Position",
-    "nav.posUnknown":"Unknown (click Locate)",
-    "nav.bestNav":"Best navigators (shortlist)",
-    "nav.bestNavDesc":"We will integrate multiple navigation providers and choose best per route.",
-    "nav.routeDemo":"Route demo",
-    "nav.routeDemoDesc":"Prototype action: open route flow (demo only).",
-    "nav.routeToast":"Route flow (demo). Next: real navigation integration.",
-    "nav.mvpNote":"Next step: connect real map provider + POI layers (fuel/hotels/attractions).",
-    "tolls.miniCalc":"Tolls overview (MVP)",
-    "tolls.miniCalcDesc":"Demo routes with estimated tolls. Next: EETS partner integration.",
-    "tolls.class":"Class",
-    "tolls.axles":"Axles",
-    "tolls.country":"Country",
-    "tolls.pay":"Pay tolls",
-    "tolls.demoPay":"Demo: toll payment flow (stub).",
-    "tolls.note":"Next: pricing engine by country + vehicle class + axles + emissions.",
-    "fuel.discount":"Discounted fuel (MVP)",
-    "fuel.discountDesc":"Demo stations list. Next: real partner discounts and payment.",
-    "fuel.price":"Price",
-    "fuel.distance":"Distance",
-    "fuel.start":"Start fuel session",
-    "fuel.demoStart":"Demo: fuel session started (stub).",
-    "fuel.credit":"Credit",
-    "hotels.driverRest":"Driver rest (MVP)",
-    "hotels.driverRestDesc":"Find hotels with truck parking. Next: booking partners integration.",
-    "hotels.parking":"Truck parking",
-    "hotels.distance":"Distance",
-    "hotels.book":"Book",
-    "hotels.demoBook":"Demo: booking flow (stub).",
-    "nearby.find":"Nearby tourist places",
-    "nearby.findDesc":"Top places near your location (demo dataset). Next: Places API.",
-    "nearby.openNow":"Open now",
-    "nearby.type":"Type",
-    "nearby.route":"Route",
-    "nearby.demoRoute":"Demo: route to place (stub).",
-    "footer.disclaimer":"This is a prototype. Do not use for real payments."
+  var els = {
+    drawer: $("drawer"),
+    backdrop: $("backdrop"),
+    btnMenu: $("btnMenu"),
+    btnClose: $("btnClose"),
+    btnLocate: $("btnLocate"),
+    btnShare: $("btnShare"),
+    lang: $("lang"),
+    viewTitle: $("viewTitle"),
+    view: $("view"),
+    coord: $("coord"),
+    pill: $("pillStatus"),
+    map: $("map"),
   };
 
-  // For MVP: keep other languages “working” by cloning EN text.
-  // You can replace later with real translations without changing code.
-  const clone = (base) => Object.assign({}, base);
+  // ---------- Toast ----------
+  function ensureToastNode() {
+    var node = $("toast");
+    if (node) return node;
 
-  const langs = ["uk","ru","bg","hr","cs","da","nl","et","fi","fr","de","el","hu","ga","it","lv","lt","mt","pl","pt","ro","sk","sl","es","sv"];
-  const dict = { en };
-  langs.forEach(l => dict[l] = clone(en));
+    node = document.createElement("div");
+    node.id = "toast";
+    node.style.position = "fixed";
+    node.style.left = "50%";
+    node.style.bottom = "18px";
+    node.style.transform = "translateX(-50%)";
+    node.style.background = "rgba(2,6,23,0.92)";
+    node.style.border = "1px solid rgba(148,163,184,0.35)";
+    node.style.color = "#e5e7eb";
+    node.style.padding = "10px 12px";
+    node.style.borderRadius = "12px";
+    node.style.fontWeight = "800";
+    node.style.fontSize = "13px";
+    node.style.maxWidth = "92vw";
+    node.style.boxShadow = "0 12px 30px rgba(0,0,0,.35)";
+    node.style.zIndex = "9999";
+    node.style.opacity = "0";
+    node.style.pointerEvents = "none";
+    node.style.transition = "opacity .15s ease";
+    document.body.appendChild(node);
+    return node;
+  }
 
-  // Add a couple of visible translations for UA/RU so you see switching works immediately
-  dict.uk["ui.locate"] = "Геолокація";
-  dict.uk["nav.navigator"] = "Навігатор";
-  dict.uk["nav.tolls"] = "Оплата доріг";
-  dict.uk["nav.fuel"] = "Заправка";
-  dict.uk["nav.hotels"] = "Готелі";
-  dict.uk["nav.nearby"] = "Місця поруч";
-  dict.uk["footer.disclaimer"] = "Це прототип. Не використовуйте для реальних оплат.";
+  var toastTimer = null;
+  function toast(msg) {
+    try {
+      var node = ensureToastNode();
+      node.textContent = String(msg || "");
+      node.style.opacity = "1";
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () {
+        node.style.opacity = "0";
+      }, 2000);
+    } catch (e) {
+      // last resort
+      alert(msg);
+    }
+  }
 
-  dict.ru["ui.locate"] = "Геолокация";
-  dict.ru["nav.navigator"] = "Навигатор";
-  dict.ru["nav.tolls"] = "Оплата дорог";
-  dict.ru["nav.fuel"] = "Заправка";
-  dict.ru["nav.hotels"] = "Отели";
-  dict.ru["nav.nearby"] = "Места рядом";
-  dict.ru["footer.disclaimer"] = "Это прототип. Не используйте для реальных оплат.";
+  // ---------- Storage ----------
+  function safeGet(k) {
+    try { return localStorage.getItem(k); } catch (e) { return null; }
+  }
+  function safeSet(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) {}
+  }
 
-  return dict;
-}
+  // ---------- Escaping (NO replaceAll) ----------
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+  function escapeJs(s) {
+    return String(s)
+      .replace(/\\/g, "\\\\")
+      .replace(/'/g, "\\'");
+  }
 
+  // ---------- Router ----------
+  function currentRoute() {
+    var h = (location.hash || "").replace("#", "");
+    return ROUTES.indexOf(h) >= 0 ? h : "navigator";
+  }
+
+  function setActive(route) {
+    $all(".navItem").forEach(function (btn) {
+      var r = btn.getAttribute("data-route");
+      if (r === route) btn.classList.add("active");
+      else btn.classList.remove("active");
+    });
+  }
+
+  function navigate(route, opts) {
+    opts = opts || {};
+    if (ROUTES.indexOf(route) < 0) route = "navigator";
+
+    // update hash unless called from hashchange
+    if (!opts.replace) location.hash = "#" + route;
+
+    setActive(route);
+
+    // Title + render
+    if (!els.viewTitle || !els.view) return;
+
+    if (route === "navigator") {
+      els.viewTitle.textContent = t("nav.navigator");
+      els.view.innerHTML = renderNavigator();
+      wireNavigatorButtons();
+      return;
+    }
+
+    if (route === "tolls") {
+      els.viewTitle.textContent = t("nav.tolls");
+      renderTolls().then(function (html) {
+        els.view.innerHTML = html;
+        wireStubButtons();
+      });
+      return;
+    }
+
+    if (route === "fuel") {
+      els.viewTitle.textContent = t("nav.fuel");
+      renderFuel().then(function (html) {
+        els.view.innerHTML = html;
+        wireStubButtons();
+      });
+      return;
+    }
+
+    if (route === "hotels") {
+      els.viewTitle.textContent = t("nav.hotels");
+      renderHotels().then(function (html) {
+        els.view.innerHTML = html;
+        wireStubButtons();
+      });
+      return;
+    }
+
+    if (route === "nearby") {
+      els.viewTitle.textContent = t("nav.nearby");
+      renderNearby().then(function (html) {
+        els.view.innerHTML = html;
+        wireStubButtons();
+      });
+      return;
+    }
+  }
+
+  // ---------- Drawer ----------
+  function openDrawer() {
+    if (!els.drawer || !els.backdrop) return;
+    els.drawer.classList.add("open");
+    els.drawer.setAttribute("aria-hidden", "false");
+    els.backdrop.hidden = false;
+  }
+  function closeDrawer() {
+    if (!els.drawer || !els.backdrop) return;
+    els.drawer.classList.remove("open");
+    els.drawer.setAttribute("aria-hidden", "true");
+    els.backdrop.hidden = true;
+  }
+
+  // ---------- Geolocation ----------
+  function getPos() {
+    var raw = safeGet(KEY_POS);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+  }
+
+  function updateCoord() {
+    if (!els.coord) return;
+    var pos = getPos();
+    els.coord.textContent = pos ? (pos.lat.toFixed(5) + ", " + pos.lng.toFixed(5)) : "—";
+  }
+
+  function getGeolocation() {
+    if (!navigator.geolocation) return Promise.reject(new Error("No geolocation"));
+    return new Promise(function (resolve, reject) {
+      navigator.geolocation.getCurrentPosition(
+        function (p) {
+          resolve({
+            lat: p.coords.latitude,
+            lng: p.coords.longitude,
+            country: "EU"
+          });
+        },
+        function (e) { reject(e); },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  // ---------- Data loading (safe) ----------
+  function loadJson(path) {
+    return fetch(path, { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("Failed to load " + path + " (" + res.status + ")");
+        return res.json();
+      });
+  }
+
+  // ---------- Distance ----------
+  function toRad(x) { return x * Math.PI / 180; }
+  function km(pos, item) {
+    var R = 6371;
+    var dLat = toRad(item.lat - pos.lat);
+    var dLon = toRad(item.lng - pos.lng);
+    var a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(pos.lat)) * Math.cos(toRad(item.lat)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  // ---------- i18n ----------
+  function detectLang() {
+    var raw = (navigator.language || "en").toLowerCase();
+    var code = raw.indexOf("-") >= 0 ? raw.split("-")[0] : raw;
+    if (code === "ua") return "uk";
+    return code;
+  }
+
+  var i18n = buildI18n();
+
+  function t(key) {
+    var lang = (els.lang && els.lang.value) ? els.lang.value : "en";
+    var dict = i18n[lang] || i18n.en;
+    return (dict && dict[key]) ? dict[key] : (i18n.en[key] || key);
+  }
+
+  function applyLang(lang) {
+    try { document.documentElement.lang = lang; } catch (e) {}
+    var dict = i18n[lang] || i18n.en;
+    $all("[data-i18n]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n");
+      var val = (dict && dict[key]) ? dict[key] : (i18n.en[key] || null);
+      if (val != null) el.textContent = val;
+    });
+    if (els.pill) els.pill.textContent = t("ui.demo");
+  }
+
+  // ---------- UI renderers ----------
+  function chip(text) {
+    return '<span class="chip">' + escapeHtml(text) + "</span>";
+  }
+
+  function renderNavigator() {
+    var pos = getPos();
+    var posText = pos ? (pos.lat.toFixed(5) + ", " + pos.lng.toFixed(5)) : t("nav.posUnknown");
+    return ''
+      + '<h3 class="sectionTitle">' + escapeHtml(t("nav.navigator")) + '</h3>'
+      + '<div class="kv"><div class="k">' + escapeHtml(t("nav.position")) + '</div><div class="v">' + escapeHtml(posText) + '</div></div>'
+      + '<div class="hr"></div>'
+      + '<div class="item">'
+      + '  <div class="itemTitle">' + escapeHtml(t("nav.bestNav")) + '</div>'
+      + '  <div class="itemSub">' + escapeHtml(t("nav.bestNavDesc")) + '</div>'
+      + '  <div class="row">'
+      +     chip("Google Maps") + chip("Waze") + chip("HERE WeGo") + chip("TomTom") + chip("Sygic")
+      + '  </div>'
+      + '</div>'
+      + '<div class="item">'
+      + '  <div class="itemTitle">' + escapeHtml(t("nav.routeDemo")) + '</div>'
+      + '  <div class="itemSub">' + escapeHtml(t("nav.routeDemoDesc")) + '</div>'
+      + '  <div class="row">'
+      + '    <button class="btn" data-action="routeDemo">▶ ' + escapeHtml(t("ui.open")) + '</button>'
+      + '  </div>'
+      + '</div>'
+      + '<div class="note">' + escapeHtml(t("nav.mvpNote")) + '</div>';
+  }
+
+  function wireNavigatorButtons() {
+    // Bind buttons inside view
+    var btn = els.view ? els.view.querySelector('[data-action="routeDemo"]') : null;
+    if (btn) {
+      btn.addEventListener("click", function () {
+        toast(t("nav.routeToast"));
+      });
+    }
+  }
+
+  function renderErrorCard(title, message) {
+    return ''
+      + '<div class="item">'
+      + '  <div class="itemTitle">' + escapeHtml(title) + '</div>'
+      + '  <div class="itemSub">' + escapeHtml(message) + '</div>'
+      + '</div>';
+  }
+
+  function renderTolls() {
+    return loadJson("data/toll_demo.json")
+      .then(function (data) {
+        var routes = (data && data.routes) ? data.routes : [];
+        var list = routes.map(function (r) {
+          return ''
+            + '<div class="item">'
+            + '  <div class="itemTop">'
+            + '    <div>'
+            + '      <div class="itemTitle">' + escapeHtml(r.name) + '</div>'
+            + '      <div class="itemSub">' + escapeHtml(r.from) + ' → ' + escapeHtml(r.to) + '</div>'
+            + '    </div>'
+            + '    <div class="badge">' + escapeHtml(String(r.currency)) + ' ' + escapeHtml(String(r.estimate)) + '</div>'
+            + '  </div>'
+            + '  <div class="row">'
+            +        chip(t("tolls.class") + ': ' + r.class)
+            +        chip(t("tolls.axles") + ': ' + r.axles)
+            +        chip(t("tolls.country") + ': ' + r.country)
+            + '  </div>'
+            + '  <div class="row">'
+            + '    <button class="btn" data-action="demoPay">🛣️ ' + escapeHtml(t("tolls.pay")) + '</button>'
+            + '  </div>'
+            + '</div>';
+        }).join("");
+
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.tolls")) + '</h3>'
+          + '<div class="item">'
+          + '  <div class="itemTitle">' + escapeHtml(t("tolls.miniCalc")) + '</div>'
+          + '  <div class="itemSub">' + escapeHtml(t("tolls.miniCalcDesc")) + '</div>'
+          + '  <div class="row">' + chip("EETS-ready (phase)") + chip("OBU replacement path") + '</div>'
+          + '</div>'
+          + '<div class="hr"></div>'
+          + '<div class="list">' + (list || '') + '</div>'
+          + '<div class="note">' + escapeHtml(t("tolls.note")) + '</div>';
+      })
+      .catch(function (e) {
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.tolls")) + '</h3>'
+          + renderErrorCard("Data load error", String(e && e.message ? e.message : e))
+          + '<div class="note">' + escapeHtml("Tip: check that /docs/data/toll_demo.json exists in the repo.") + '</div>';
+      });
+  }
+
+  function renderFuel() {
+    return loadJson("data/fuel_stations.json")
+      .then(function (data) {
+        var stations = (data && data.stations) ? data.stations : [];
+        var pos = getPos();
+
+        var list = stations.map(function (s) {
+          var dist = (pos ? km(pos, s).toFixed(1) : "—");
+          return ''
+            + '<div class="item">'
+            + '  <div class="itemTop">'
+            + '    <div>'
+            + '      <div class="itemTitle">' + escapeHtml(s.name) + '</div>'
+            + '      <div class="itemSub">' + escapeHtml(s.city) + ' • ' + escapeHtml(s.brand) + '</div>'
+            + '    </div>'
+            + '    <div class="badge">-' + escapeHtml(String(s.discountPct)) + '%</div>'
+            + '  </div>'
+            + '  <div class="row">'
+            +        chip(t("fuel.price") + ': ' + s.price + ' ' + s.currency + '/L')
+            +        chip(t("fuel.distance") + ': ' + dist + ' km')
+            + '  </div>'
+            + '  <div class="row">'
+            + '    <button class="btn" data-action="fuelStart">⛽ ' + escapeHtml(t("fuel.start")) + '</button>'
+            + '    <button class="btnGhost" data-action="fuelCredit">💳 ' + escapeHtml(t("fuel.credit")) + '</button>'
+            + '  </div>'
+            + '</div>';
+        }).join("");
+
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.fuel")) + '</h3>'
+          + '<div class="item">'
+          + '  <div class="itemTitle">' + escapeHtml(t("fuel.discount")) + '</div>'
+          + '  <div class="itemSub">' + escapeHtml(t("fuel.discountDesc")) + '</div>'
+          + '  <div class="row">' + chip("UTA-like") + chip("DKV-like") + chip("E100-like") + '</div>'
+          + '</div>'
+          + '<div class="hr"></div>'
+          + '<div class="list">' + (list || '') + '</div>';
+      })
+      .catch(function (e) {
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.fuel")) + '</h3>'
+          + renderErrorCard("Data load error", String(e && e.message ? e.message : e))
+          + '<div class="note">' + escapeHtml("Tip: check that /docs/data/fuel_stations.json exists in the repo.") + '</div>';
+      });
+  }
+
+  function renderHotels() {
+    return loadJson("data/hotels.json")
+      .then(function (data) {
+        var hotels = (data && data.hotels) ? data.hotels : [];
+        var pos = getPos();
+
+        var list = hotels.map(function (h) {
+          var stars = h.stars || 3;
+          var dist = (pos ? km(pos, h).toFixed(1) : "—");
+          return ''
+            + '<div class="item">'
+            + '  <div class="itemTop">'
+            + '    <div>'
+            + '      <div class="itemTitle">' + escapeHtml(h.name) + '</div>'
+            + '      <div class="itemSub">' + escapeHtml(h.city) + ' • ' + escapeHtml(h.type) + '</div>'
+            + '    </div>'
+            + '    <div class="badge">' + escapeHtml(new Array(stars + 1).join("★")) + '</div>'
+            + '  </div>'
+            + '  <div class="row">'
+            +        chip(t("hotels.parking") + ': ' + (h.parkingTruck ? t("ui.yes") : t("ui.no")))
+            +        chip(t("hotels.distance") + ': ' + dist + ' km')
+            + '  </div>'
+            + '  <div class="row">'
+            + '    <button class="btn" data-action="hotelBook">🏨 ' + escapeHtml(t("hotels.book")) + '</button>'
+            + '  </div>'
+            + '</div>';
+        }).join("");
+
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.hotels")) + '</h3>'
+          + '<div class="item">'
+          + '  <div class="itemTitle">' + escapeHtml(t("hotels.driverRest")) + '</div>'
+          + '  <div class="itemSub">' + escapeHtml(t("hotels.driverRestDesc")) + '</div>'
+          + '  <div class="row">' + chip("Truck parking") + chip("Safe rest") + chip("Partner integrations") + '</div>'
+          + '</div>'
+          + '<div class="hr"></div>'
+          + '<div class="list">' + (list || '') + '</div>';
+      })
+      .catch(function (e) {
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.hotels")) + '</h3>'
+          + renderErrorCard("Data load error", String(e && e.message ? e.message : e))
+          + '<div class="note">' + escapeHtml("Tip: check that /docs/data/hotels.json exists in the repo.") + '</div>';
+      });
+  }
+
+  function renderNearby() {
+    return loadJson("data/pois.json")
+      .then(function (data) {
+        var places = (data && data.places) ? data.places : [];
+        var pos = getPos();
+
+        var enriched = places.map(function (p) {
+          return {
+            name: p.name,
+            category: p.category,
+            city: p.city,
+            openNow: !!p.openNow,
+            lat: p.lat,
+            lng: p.lng,
+            d: pos ? km(pos, p) : null
+          };
+        });
+
+        enriched.sort(function (a, b) {
+          var da = (a.d == null) ? 1e9 : a.d;
+          var db = (b.d == null) ? 1e9 : b.d;
+          return da - db;
+        });
+
+        var list = enriched.slice(0, 10).map(function (p) {
+          var dist = pos ? p.d.toFixed(1) + " km" : "—";
+          return ''
+            + '<div class="item">'
+            + '  <div class="itemTop">'
+            + '    <div>'
+            + '      <div class="itemTitle">' + escapeHtml(p.name) + '</div>'
+            + '      <div class="itemSub">' + escapeHtml(p.category) + ' • ' + escapeHtml(p.city) + '</div>'
+            + '    </div>'
+            + '    <div class="badge">' + escapeHtml(dist) + '</div>'
+            + '  </div>'
+            + '  <div class="row">'
+            +        chip(t("nearby.openNow") + ': ' + (p.openNow ? t("ui.yes") : t("ui.no")))
+            +        chip(t("nearby.type") + ': ' + p.category)
+            + '  </div>'
+            + '  <div class="row">'
+            + '    <button class="btn" data-action="nearbyRoute">🧭 ' + escapeHtml(t("nearby.route")) + '</button>'
+            + '  </div>'
+            + '</div>';
+        }).join("");
+
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.nearby")) + '</h3>'
+          + '<div class="item">'
+          + '  <div class="itemTitle">' + escapeHtml(t("nearby.find")) + '</div>'
+          + '  <div class="itemSub">' + escapeHtml(t("nearby.findDesc")) + '</div>'
+          + '</div>'
+          + '<div class="hr"></div>'
+          + '<div class="list">' + (list || '') + '</div>';
+      })
+      .catch(function (e) {
+        return ''
+          + '<h3 class="sectionTitle">' + escapeHtml(t("nav.nearby")) + '</h3>'
+          + renderErrorCard("Data load error", String(e && e.message ? e.message : e))
+          + '<div class="note">' + escapeHtml("Tip: check that /docs/data/pois.json exists in the repo.") + '</div>';
+      });
+  }
+
+  function wireStubButtons() {
+    // Generic stub actions inside the view
+    if (!els.view) return;
+
+    var map = {
+      demoPay: function () { toast(t("tolls.demoPay")); },
+      fuelStart: function () { toast(t("fuel.demoStart")); },
+      fuelCredit: function () { toast(t("ui.soon")); },
+      hotelBook: function () { toast(t("hotels.demoBook")); },
+      nearbyRoute: function () { toast(t("nearby.demoRoute")); }
+    };
+
+    $all("#view [data-action]").forEach(function (btn) {
+      var a = btn.getAttribute("data-action");
+      if (!a || !map[a]) return;
+      btn.addEventListener("click", map[a]);
+    });
+  }
+
+  // ---------- Share ----------
+  function shareLink() {
+    var url = location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function () {
+        toast(t("ui.copied"));
+      }).catch(function () {
+        prompt(t("ui.copyPrompt"), url);
+      });
+    } else {
+      prompt(t("ui.copyPrompt"), url);
+    }
+  }
+
+  // ---------- Init ----------
+  function init() {
+    // Basic DOM presence check
+    if (!els.viewTitle || !els.view) {
+      // Nothing to do; avoid crashes
+      return;
+    }
+
+    // Drawer handlers
+    if (els.btnMenu) els.btnMenu.addEventListener("click", openDrawer);
+    if (els.btnClose) els.btnClose.addEventListener("click", closeDrawer);
+    if (els.backdrop) els.backdrop.addEventListener("click", closeDrawer);
+
+    // Nav buttons
+    $all(".navItem").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var r = btn.getAttribute("data-route") || "navigator";
+        navigate(r);
+        closeDrawer();
+      });
+    });
+
+    // Language init
+    var saved = safeGet(KEY_LANG);
+    var detected = detectLang();
+    var initial = (saved && i18n[saved]) ? saved : (i18n[detected] ? detected : "en");
+
+    if (els.lang) {
+      els.lang.value = initial;
+      els.lang.addEventListener("change", function (e) {
+        var lang = e.target.value;
+        safeSet(KEY_LANG, lang);
+        applyLang(lang);
+        navigate(currentRoute(), { replace: true });
+      });
+    }
+    applyLang(initial);
+
+    // Locate
+    if (els.btnLocate) {
+      els.btnLocate.addEventListener("click", function () {
+        if (els.pill) els.pill.textContent = t("ui.working");
+        getGeolocation().then(function (pos) {
+          safeSet(KEY_POS, JSON.stringify(pos));
+          updateCoord();
+          if (els.pill) els.pill.textContent = t("ui.ready");
+          navigate(currentRoute(), { replace: true });
+        }).catch(function () {
+          if (els.pill) els.pill.textContent = t("ui.demo");
+          toast(t("err.location"));
+        });
+      });
+    }
+
+    // Share
+    if (els.btnShare) els.btnShare.addEventListener("click", shareLink);
+
+    // Router
+    window.addEventListener("hashchange", function () {
+      navigate(currentRoute(), { replace: true });
+    });
+
+    // PWA Service Worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    }
+
+    // Initial state
+    updateCoord();
+    navigate(currentRoute(), { replace: true });
+
+    // Visual status
+    if (els.pill) els.pill.textContent = t("ui.demo");
+  }
+
+  // ---------- i18n dictionary ----------
+  function buildI18n() {
+    var en = {
+      "ui.locate": "Locate",
+      "ui.share": "Share",
+      "ui.open": "Open",
+      "ui.soon": "Soon",
+      "ui.yes": "Yes",
+      "ui.no": "No",
+      "ui.demo": "Demo",
+      "ui.ready": "Ready",
+      "ui.working": "Working…",
+      "ui.copied": "Link copied",
+      "ui.copyPrompt": "Copy link:",
+      "err.location": "Location not available. Allow location permission or use demo mode.",
+      "drawer.note": "MVP demo. Map is a placeholder. Next step: integrate real Maps/Places and partner APIs.",
+      "map.title": "Map",
+      "map.placeholder": "Map placeholder (MVP). Click “Locate” to set your position, then browse modules.",
+      "map.coord": "Coordinates:",
+      "nav.navigator": "Navigator",
+      "nav.tolls": "Tolls",
+      "nav.fuel": "Fuel",
+      "nav.hotels": "Hotels",
+      "nav.nearby": "Nearby",
+      "nav.position": "Position",
+      "nav.posUnknown": "Unknown (click Locate)",
+      "nav.bestNav": "Best navigators (shortlist)",
+      "nav.bestNavDesc": "We will integrate multiple navigation providers and choose best per route.",
+      "nav.routeDemo": "Route demo",
+      "nav.routeDemoDesc": "Prototype action: open route flow (demo only).",
+      "nav.routeToast": "Route flow (demo). Next: real navigation integration.",
+      "nav.mvpNote": "Next step: connect real map provider + POI layers (fuel/hotels/attractions).",
+      "tolls.miniCalc": "Tolls overview (MVP)",
+      "tolls.miniCalcDesc": "Demo routes with estimated tolls. Next: EETS partner integration.",
+      "tolls.class": "Class",
+      "tolls.axles": "Axles",
+      "tolls.country": "Country",
+      "tolls.pay": "Pay tolls",
+      "tolls.demoPay": "Demo: toll payment flow (stub).",
+      "tolls.note": "Next: pricing engine by country + vehicle class + axles + emissions.",
+      "fuel.discount": "Discounted fuel (MVP)",
+      "fuel.discountDesc": "Demo stations list. Next: real partner discounts and payment.",
+      "fuel.price": "Price",
+      "fuel.distance": "Distance",
+      "fuel.start": "Start fuel session",
+      "fuel.demoStart": "Demo: fuel session started (stub).",
+      "fuel.credit": "Credit",
+      "hotels.driverRest": "Driver rest (MVP)",
+      "hotels.driverRestDesc": "Find hotels with truck parking. Next: booking partners integration.",
+      "hotels.parking": "Truck parking",
+      "hotels.distance": "Distance",
+      "hotels.book": "Book",
+      "hotels.demoBook": "Demo: booking flow (stub).",
+      "nearby.find": "Nearby tourist places",
+      "nearby.findDesc": "Top places near your location (demo dataset). Next: Places API.",
+      "nearby.openNow": "Open now",
+      "nearby.type": "Type",
+      "nearby.route": "Route",
+      "nearby.demoRoute": "Demo: route to place (stub).",
+      "footer.disclaimer": "This is a prototype. Do not use for real payments."
+    };
+
+    function clone(base) {
+      var o = {};
+      for (var k in base) if (Object.prototype.hasOwnProperty.call(base, k)) o[k] = base[k];
+      return o;
+    }
+
+    var dict = { en: en };
+
+    // EU + UK/RU (working MVP = clone EN, then override some visible keys)
+    var langs = ["uk","ru","bg","hr","cs","da","nl","et","fi","fr","de","el","hu","ga","it","lv","lt","mt","pl","pt","ro","sk","sl","es","sv"];
+    for (var i = 0; i < langs.length; i++) dict[langs[i]] = clone(en);
+
+    // quick UA/RU overrides so you see switching works
+    dict.uk["ui.locate"] = "Геолокація";
+    dict.uk["nav.navigator"] = "Навігатор";
+    dict.uk["nav.tolls"] = "Оплата доріг";
+    dict.uk["nav.fuel"] = "Заправка";
+    dict.uk["nav.hotels"] = "Готелі";
+    dict.uk["nav.nearby"] = "Місця поруч";
+    dict.uk["footer.disclaimer"] = "Це прототип. Не використовуйте для реальних оплат.";
+
+    dict.ru["ui.locate"] = "Геолокация";
+    dict.ru["nav.navigator"] = "Навигатор";
+    dict.ru["nav.tolls"] = "Оплата дорог";
+    dict.ru["nav.fuel"] = "Заправка";
+    dict.ru["nav.hotels"] = "Отели";
+    dict.ru["nav.nearby"] = "Места рядом";
+    dict.ru["footer.disclaimer"] = "Это прототип. Не используйте для реальных оплат.";
+
+    return dict;
+  }
+
+  // ---------- Run ----------
+  try {
+    init();
+  } catch (e) {
+    // If something goes wrong, still keep page usable
+    try {
+      console.error(e);
+      toast("App error: " + (e && e.message ? e.message : String(e)));
+    } catch (_) {}
+  }
+})();
