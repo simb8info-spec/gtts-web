@@ -1,1 +1,126 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GTTS — Navigator • Tolls • Fuel • Hotels • Nearby</title>
+  <meta name="description" content="GTTS: navigation, tolls, discounted fuel, hotels and nearby places." />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <button class="iconbtn" id="menuBtn" aria-label="Open menu">☰</button>
+    <div class="brand">
+      <div class="brand__title">GTTS</div>
+      <div class="brand__subtitle">Navigator • Tolls • Fuel • Hotels • Nearby</div>
+    </div>
+    <div class="topbar__right">
+      <select id="langSelect" class="select" aria-label="Language">
+        <option value="uk">Українська</option>
+        <option value="en">English</option>
+        <option value="pl">Polski</option>
+        <option value="de">Deutsch</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="it">Italiano</option>
+        <option value="ro">Română</option>
+        <option value="cs">Čeština</option>
+        <option value="sk">Slovenčina</option>
+        <option value="hu">Magyar</option>
+        <option value="nl">Nederlands</option>
+        <option value="pt">Português</option>
+        <option value="sv">Svenska</option>
+        <option value="da">Dansk</option>
+        <option value="fi">Suomi</option>
+        <option value="el">Ελληνικά</option>
+        <option value="bg">Български</option>
+        <option value="hr">Hrvatski</option>
+        <option value="sl">Slovenščina</option>
+        <option value="lt">Lietuvių</option>
+        <option value="lv">Latviešu</option>
+        <option value="et">Eesti</option>
+        <option value="mt">Malti</option>
+        <option value="ga">Gaeilge</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+  </header>
+
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer__header">
+      <div class="drawer__title">GTTS</div>
+      <button class="iconbtn" id="closeBtn" aria-label="Close menu">✕</button>
+    </div>
+
+    <nav class="nav">
+      <button class="nav__item" data-route="navigator">🧭 <span data-i18n="nav.navigator">Навігатор</span></button>
+      <button class="nav__item" data-route="tolls">🛣️ <span data-i18n="nav.tolls">Оплата доріг</span></button>
+      <button class="nav__item" data-route="fuel">⛽ <span data-i18n="nav.fuel">Заправка</span></button>
+      <button class="nav__item" data-route="hotels">🏨 <span data-i18n="nav.hotels">Готелі</span></button>
+      <button class="nav__item" data-route="nearby">📍 <span data-i18n="nav.nearby">Місця поруч</span></button>
+    </nav>
+
+    <div class="drawer__footer">
+      <div class="tiny" data-i18n="drawer.note">
+        MVP web demo. Пізніше підключимо реальні карти, партнерів та оплату.
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="panel">
+      <div class="panel__bar">
+        <div class="panel__title" id="viewTitle">—</div>
+        <div class="panel__actions" id="viewActions"></div>
+      </div>
+
+      <div class="grid">
+        <div class="card mapcard">
+          <div class="card__title" data-i18n="map.title">Мапа</div>
+          <div class="map" id="map">
+            <div class="map__placeholder" id="mapPlaceholder">
+              <div class="map__headline" data-i18n="map.placeholderHeadline">Демо-мапа</div>
+              <div class="map__sub" data-i18n="map.placeholderSub">
+                Пізніше тут буде Google/Mapbox/HERE. Зараз — демо з поточною геолокацією.
+              </div>
+              <div class="map__row">
+                <button class="btn" id="locBtn" data-i18n="map.useMyLocation">Використати моє місце</button>
+                <button class="btn btn--ghost" id="resetBtn" data-i18n="map.reset">Скинути</button>
+              </div>
+              <div class="tiny" id="locInfo">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card listcard">
+          <div class="card__title" id="listTitle">—</div>
+          <div class="list" id="list"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card__title" data-i18n="how.title">Як це буде працювати в реальності</div>
+        <ol class="ol">
+          <li data-i18n="how.1">Навігатор: інтеграція з мапою + POI (АЗС/готелі/пам’ятки), маршрути, фільтри.</li>
+          <li data-i18n="how.2">Оплата доріг: тариф по країні/класу/осям/еко-нормі → pre-auth → списання.</li>
+          <li data-i18n="how.3">Заправка: вибір АЗС на мапі → “Start fuel session” → кредит/фрод → чек.</li>
+          <li data-i18n="how.4">Готелі: фільтр поруч, паркінг для вантажівок, рейтинг, бронювання через партнера.</li>
+          <li data-i18n="how.5">Місця поруч: attractions, museums, viewpoints — для водія/диспетчера.</li>
+        </ol>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>© 2026 GTTS</div>
+      <div class="tiny">GitHub Pages • Static MVP • Upgrade to APIs later</div>
+    </footer>
+  </main>
+
+  <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
 
