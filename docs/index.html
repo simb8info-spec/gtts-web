@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>GTTS</title>
-  <meta name="description" content="GTTS: Navigation, Tolls, Fuel discounts, Hotels, Nearby places." />
+  <meta name="description" content="GTTS: Navigation, Vehicle, Tolls, Fuel discounts, Hotels, Nearby places." />
 
   <style>
     :root{
@@ -27,7 +27,6 @@
       color:var(--text);
     }
 
-    /* Topbar */
     .topbar{
       position:sticky; top:0; z-index:20;
       display:flex; align-items:center; gap:12px;
@@ -47,10 +46,7 @@
     .logo{font-weight:1000; letter-spacing:.8px; font-size:20px}
     .subtitle{font-size:12px; opacity:.9}
 
-    .right{
-      margin-left:auto;
-      display:flex; align-items:center; gap:10px;
-    }
+    .right{margin-left:auto; display:flex; align-items:center; gap:10px}
     .select{
       background:rgba(2,6,23,.35);
       color:var(--text);
@@ -58,7 +54,7 @@
       border-radius:10px;
       padding:10px 10px;
       font-weight:800;
-      max-width: 260px;
+      max-width:260px;
     }
     .btn{
       border:1px solid rgba(255,255,255,.25);
@@ -79,7 +75,6 @@
       font-weight:900;
     }
 
-    /* Layout */
     .main{padding:16px}
     .grid{
       display:grid;
@@ -110,7 +105,9 @@
       color:var(--muted);
       font-weight:900;
       font-size:12px;
+      white-space:nowrap;
     }
+
     .map{
       height:520px;
       background:var(--panel2);
@@ -126,9 +123,10 @@
       color:var(--muted);
     }
     .mapBig{font-size:42px}
-    .mapText{max-width:440px}
+    .mapText{max-width:460px}
+
     .mapBar{
-      display:flex; gap:10px;
+      display:flex; gap:10px; align-items:center;
       padding:10px 14px;
       border-top:1px solid rgba(30,41,59,.7);
     }
@@ -166,6 +164,24 @@
       font-size:12px;
       font-weight:900;
     }
+    .field{
+      display:grid;
+      grid-template-columns: 150px 1fr;
+      gap:10px;
+      align-items:center;
+      margin:8px 0;
+    }
+    .label{color:var(--muted); font-size:12px; font-weight:900}
+    .input{
+      width:100%;
+      background:rgba(2,6,23,.5);
+      color:var(--text);
+      border:1px solid rgba(148,163,184,.25);
+      border-radius:10px;
+      padding:10px 10px;
+      font-weight:900;
+      outline:none;
+    }
 
     .footer{
       max-width:1200px;
@@ -176,7 +192,6 @@
       color:var(--muted);
     }
 
-    /* Drawer */
     .drawer{
       position:fixed; top:0; left:0; height:100%;
       width:320px;
@@ -220,7 +235,6 @@
     }
     .backdrop.show{display:block}
 
-    /* Toast */
     .toast{
       position:fixed; left:50%; bottom:18px;
       transform:translateX(-50%);
@@ -229,7 +243,7 @@
       color:var(--text);
       padding:10px 12px;
       border-radius:12px;
-      font-weight:800;
+      font-weight:900;
       font-size:13px;
       max-width:92vw;
       box-shadow:var(--shadow);
@@ -243,6 +257,7 @@
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .map{height:420px}
+      .field{grid-template-columns: 1fr}
     }
   </style>
 </head>
@@ -253,7 +268,7 @@
 
     <div class="brand">
       <div class="logo">GTTS</div>
-      <div class="subtitle" id="subTitle">Navigator • Tolls • Fuel • Hotels • Nearby</div>
+      <div class="subtitle">Vehicle • Navigator • Tolls • Fuel • Hotels • Nearby</div>
     </div>
 
     <div class="right">
@@ -269,6 +284,7 @@
     </div>
 
     <nav class="nav">
+      <button class="navItem" data-route="vehicle">🚗 <span id="tNavVehicle">Vehicle</span></button>
       <button class="navItem" data-route="navigator">🧭 <span id="tNavNav">Navigator</span></button>
       <button class="navItem" data-route="tolls">🛣️ <span id="tNavTolls">Tolls</span></button>
       <button class="navItem" data-route="fuel">⛽ <span id="tNavFuel">Fuel</span></button>
@@ -328,7 +344,6 @@
     (function(){
       "use strict";
 
-      // ---------- Helpers ----------
       function $(id){ return document.getElementById(id); }
       function $all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
 
@@ -352,12 +367,12 @@
           .replace(/'/g,"&#039;");
       }
 
-      // ---------- State ----------
       var KEY_LANG = "gtts_lang";
       var KEY_POS  = "gtts_pos";
-      var ROUTES = ["navigator","tolls","fuel","hotels","nearby"];
+      var KEY_VEH  = "gtts_vehicle";
 
-      // ---------- i18n (мінімально, але стабільно) ----------
+      var ROUTES = ["vehicle","navigator","tolls","fuel","hotels","nearby"];
+
       var LANGS = [
         {code:"en", label:"English"},
         {code:"uk", label:"Українська"},
@@ -378,51 +393,62 @@
           locate:"Locate", share:"Share", map:"Map",
           coord:"Coordinates:", disclaimer:"Prototype. Do not use for real payments.",
           note:"MVP demo (no real payments).",
+          vehicle:"Vehicle", vehicleTitle:"Vehicle profile",
+          vehicleDesc:"Vehicle parameters used for tolls, fuel and compliance.",
           nav:"Navigator", tolls:"Tolls", fuel:"Fuel", hotels:"Hotels", nearby:"Nearby",
           mapPlaceholder:"Map placeholder. Click “Locate” to set your position, then browse modules.",
           posUnknown:"Unknown (click Locate)",
-          demoRoute:"Route demo", demoPay:"Demo payment flow (stub).",
+          plate:"Plate number", country:"Country", type:"Vehicle type",
+          fuelType:"Fuel type", emission:"Emission class", axles:"Axles",
+          save:"Save", edit:"Edit", reset:"Reset to demo",
+          demoPay:"Demo toll payment (stub).",
           demoFuel:"Demo fuel session (stub).",
-          demoHotel:"Demo booking flow (stub).",
+          demoHotel:"Demo booking (stub).",
           demoNearby:"Demo route to place (stub).",
-          ok:"OK",
         },
         uk: {
           locate:"Геолокація", share:"Поділитись", map:"Мапа",
           coord:"Координати:", disclaimer:"Прототип. Не використовуйте для реальних оплат.",
           note:"MVP демо (без реальних оплат).",
+          vehicle:"Автомобіль", vehicleTitle:"Профіль автомобіля",
+          vehicleDesc:"Параметри авто для оплати доріг, заправки та відповідності.",
           nav:"Навігатор", tolls:"Оплата доріг", fuel:"Заправка", hotels:"Готелі", nearby:"Місця поруч",
           mapPlaceholder:"Заглушка мапи. Натисни “Геолокація”, щоб встановити позицію, і обирай модулі.",
           posUnknown:"Невідомо (натисни Геолокація)",
-          demoRoute:"Демо маршруту", demoPay:"Демо оплати доріг (stub).",
+          plate:"Номер", country:"Країна", type:"Тип ТЗ",
+          fuelType:"Тип пального", emission:"Еко-клас", axles:"Кількість осей",
+          save:"Зберегти", edit:"Редагувати", reset:"Скинути демо",
+          demoPay:"Демо оплати доріг (stub).",
           demoFuel:"Демо заправки (stub).",
           demoHotel:"Демо бронювання (stub).",
           demoNearby:"Демо маршруту до місця (stub).",
-          ok:"ОК",
         },
         ru: {
           locate:"Геолокация", share:"Поделиться", map:"Карта",
           coord:"Координаты:", disclaimer:"Прототип. Не используйте для реальных оплат.",
           note:"MVP демо (без реальных оплат).",
+          vehicle:"Автомобиль", vehicleTitle:"Профиль автомобиля",
+          vehicleDesc:"Параметры ТС для дорог, топлива и соответствия.",
           nav:"Навигатор", tolls:"Оплата дорог", fuel:"Заправка", hotels:"Отели", nearby:"Места рядом",
           mapPlaceholder:"Заглушка карты. Нажми “Геолокация”, чтобы установить позицию, и выбирай модули.",
           posUnknown:"Неизвестно (нажми Геолокация)",
-          demoRoute:"Демо маршрута", demoPay:"Демо оплаты дорог (stub).",
+          plate:"Номер", country:"Страна", type:"Тип ТС",
+          fuelType:"Тип топлива", emission:"Эко-класс", axles:"Количество осей",
+          save:"Сохранить", edit:"Редактировать", reset:"Сбросить демо",
+          demoPay:"Демо оплаты дорог (stub).",
           demoFuel:"Демо заправки (stub).",
           demoHotel:"Демо бронирования (stub).",
           demoNearby:"Демо маршрута к месту (stub).",
-          ok:"ОК",
         }
       };
 
-      // fallback: якщо мови немає — використовуємо EN
       function t(key){
         var lang = $("lang").value || "en";
         var dict = T[lang] || T.en;
         return (dict && dict[key]) ? dict[key] : (T.en[key] || key);
       }
 
-      // ---------- Data (вбудоване, щоб не було 404) ----------
+      // Embedded demo data (no fetch, no 404)
       var DEMO = {
         tolls: [
           { name:"A2 Demo Segment", from:"Poznan", to:"Warsaw", country:"PL", class:"N3", axles:5, estimate:"38.5 EUR" },
@@ -445,7 +471,6 @@
         ]
       };
 
-      // ---------- Drawer ----------
       function openDrawer(){
         $("drawer").classList.add("open");
         $("drawer").setAttribute("aria-hidden","false");
@@ -457,7 +482,6 @@
         $("backdrop").classList.remove("show");
       }
 
-      // ---------- Geolocation ----------
       function getPos(){
         var raw = safeGet(KEY_POS);
         if(!raw) return null;
@@ -467,6 +491,7 @@
         safeSet(KEY_POS, JSON.stringify(pos));
         $("coord").textContent = pos.lat.toFixed(5)+", "+pos.lng.toFixed(5);
       }
+
       function locate(){
         $("pillStatus").textContent = "…";
         if(!navigator.geolocation){
@@ -488,19 +513,68 @@
         );
       }
 
-      // ---------- Views ----------
+      function shareLink(){
+        var url = location.href;
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(url).then(function(){ toast("Copied"); })
+            .catch(function(){ prompt("Copy link:", url); });
+        } else {
+          prompt("Copy link:", url);
+        }
+      }
+
+      function getVehicle(){
+        var raw = safeGet(KEY_VEH);
+        if(!raw) return {
+          plate:"AB1234CD",
+          country:"PL",
+          type:"N3 (Truck)",
+          fuelType:"Diesel",
+          emission:"EURO 6",
+          axles:"5"
+        };
+        try { return JSON.parse(raw); } catch(e){ return null; }
+      }
+
+      function setVehicle(v){
+        safeSet(KEY_VEH, JSON.stringify(v));
+      }
+
       function setActive(route){
         $all(".navItem").forEach(function(btn){
           btn.classList.toggle("active", btn.getAttribute("data-route") === route);
         });
       }
 
+      function getRouteFromHash(){
+        var h = (location.hash || "").replace("#","");
+        return ROUTES.indexOf(h) >= 0 ? h : "vehicle";
+      }
+
+      function applyTexts(){
+        $("tLocate").textContent = t("locate");
+        $("tShare").textContent = t("share");
+        $("tMapTitle").textContent = t("map");
+        $("tMapPlaceholder").textContent = t("mapPlaceholder");
+        $("tCoordLabel").textContent = t("coord");
+        $("tDisclaimer").textContent = t("disclaimer");
+        $("tDrawerNote").textContent = t("note");
+
+        $("tNavVehicle").textContent = t("vehicle");
+        $("tNavNav").textContent = t("nav");
+        $("tNavTolls").textContent = t("tolls");
+        $("tNavFuel").textContent = t("fuel");
+        $("tNavHotels").textContent = t("hotels");
+        $("tNavNearby").textContent = t("nearby");
+      }
+
       function render(route){
-        if(ROUTES.indexOf(route) < 0) route = "navigator";
+        if(ROUTES.indexOf(route) < 0) route = "vehicle";
         setActive(route);
 
         $("viewPill").textContent = "MVP";
         $("viewTitle").textContent =
+          route === "vehicle" ? t("vehicle") :
           route === "navigator" ? t("nav") :
           route === "tolls" ? t("tolls") :
           route === "fuel" ? t("fuel") :
@@ -510,6 +584,52 @@
         var pos = getPos();
         if(pos) $("coord").textContent = pos.lat.toFixed(5)+", "+pos.lng.toFixed(5);
 
+        // -------- Vehicle --------
+        if(route === "vehicle"){
+          var v = getVehicle();
+          $("view").innerHTML =
+            '<h3 class="sectionTitle">'+escapeHtml(t("vehicleTitle"))+'</h3>'+
+            '<div class="item">'+
+              '<div class="itemSub">'+escapeHtml(t("vehicleDesc"))+'</div>'+
+              '<div class="hr"></div>'+
+
+              '<div class="field"><div class="label">'+escapeHtml(t("plate"))+'</div><input id="vehPlate" class="input" value="'+escapeHtml(v.plate || "")+'"></div>'+
+              '<div class="field"><div class="label">'+escapeHtml(t("country"))+'</div><input id="vehCountry" class="input" value="'+escapeHtml(v.country || "")+'"></div>'+
+              '<div class="field"><div class="label">'+escapeHtml(t("type"))+'</div><input id="vehType" class="input" value="'+escapeHtml(v.type || "")+'"></div>'+
+              '<div class="field"><div class="label">'+escapeHtml(t("fuelType"))+'</div><input id="vehFuel" class="input" value="'+escapeHtml(v.fuelType || "")+'"></div>'+
+              '<div class="field"><div class="label">'+escapeHtml(t("emission"))+'</div><input id="vehEmission" class="input" value="'+escapeHtml(v.emission || "")+'"></div>'+
+              '<div class="field"><div class="label">'+escapeHtml(t("axles"))+'</div><input id="vehAxles" class="input" value="'+escapeHtml(v.axles || "")+'"></div>'+
+
+              '<div class="row">'+
+                '<button class="btn" id="btnVehSave">💾 '+escapeHtml(t("save"))+'</button>'+
+                '<button class="btnGhost" id="btnVehReset">↺ '+escapeHtml(t("reset"))+'</button>'+
+              '</div>'+
+            '</div>';
+
+          $("btnVehSave").addEventListener("click", function(){
+            var nv = {
+              plate: $("vehPlate").value.trim(),
+              country: $("vehCountry").value.trim().toUpperCase(),
+              type: $("vehType").value.trim(),
+              fuelType: $("vehFuel").value.trim(),
+              emission: $("vehEmission").value.trim(),
+              axles: $("vehAxles").value.trim()
+            };
+            setVehicle(nv);
+            toast("Saved");
+          });
+
+          $("btnVehReset").addEventListener("click", function(){
+            safeSet(KEY_VEH, "");
+            localStorage.removeItem(KEY_VEH);
+            toast("Reset");
+            render("vehicle");
+          });
+
+          return;
+        }
+
+        // -------- Navigator --------
         if(route === "navigator"){
           var posText = pos ? (pos.lat.toFixed(5)+", "+pos.lng.toFixed(5)) : t("posUnknown");
           $("view").innerHTML =
@@ -525,15 +645,16 @@
             '<div class="item">'+
               '<div class="itemTitle">Position</div>'+
               '<div class="itemSub">'+escapeHtml(posText)+'</div>'+
-              '<div class="row"><button class="btn" id="btnRouteDemo">▶ '+escapeHtml(t("demoRoute"))+'</button></div>'+
+              '<div class="row"><button class="btn" id="btnRouteDemo">▶ Route demo</button></div>'+
             '</div>';
 
           $("btnRouteDemo").addEventListener("click", function(){ toast("Route flow (demo)"); });
           return;
         }
 
+        // -------- Tolls --------
         if(route === "tolls"){
-          var list = DEMO.tolls.map(function(r){
+          var listT = DEMO.tolls.map(function(r){
             return ''+
               '<div class="item">'+
                 '<div class="itemTop">'+
@@ -551,10 +672,11 @@
                 '<div class="row"><button class="btn payBtn">🛣️ '+escapeHtml(t("tolls"))+'</button></div>'+
               '</div>';
           }).join("");
+
           $("view").innerHTML =
             '<h3 class="sectionTitle">'+escapeHtml(t("tolls"))+'</h3>'+
             '<div class="item"><div class="itemTitle">EETS-ready (phase)</div><div class="itemSub">Demo only. Next: partner integration.</div></div>'+
-            '<div class="hr"></div><div class="list">'+list+'</div>';
+            '<div class="hr"></div><div class="list">'+listT+'</div>';
 
           $all(".payBtn").forEach(function(b){
             b.addEventListener("click", function(){ toast(t("demoPay")); });
@@ -562,6 +684,7 @@
           return;
         }
 
+        // -------- Fuel --------
         if(route === "fuel"){
           var listF = DEMO.fuel.map(function(s){
             return ''+
@@ -580,6 +703,7 @@
                 '<div class="row"><button class="btn fuelBtn">⛽ '+escapeHtml(t("fuel"))+'</button><button class="btnGhost creditBtn">💳 Credit</button></div>'+
               '</div>';
           }).join("");
+
           $("view").innerHTML =
             '<h3 class="sectionTitle">'+escapeHtml(t("fuel"))+'</h3>'+
             '<div class="item"><div class="itemTitle">Discounted fuel</div><div class="itemSub">UTA/DKV/E100-like demo.</div></div>'+
@@ -590,6 +714,7 @@
           return;
         }
 
+        // -------- Hotels --------
         if(route === "hotels"){
           var listH = DEMO.hotels.map(function(h){
             var stars = new Array((h.stars||3)+1).join("★");
@@ -609,15 +734,17 @@
                 '<div class="row"><button class="btn hotelBtn">🏨 '+escapeHtml(t("hotels"))+'</button></div>'+
               '</div>';
           }).join("");
+
           $("view").innerHTML =
             '<h3 class="sectionTitle">'+escapeHtml(t("hotels"))+'</h3>'+
-            '<div class="item"><div class="itemTitle">Driver rest</div><div class="itemSub">Demo list. Next: partner booking API.</div></div>'+
+            '<div class="item"><div class="itemTitle">Driver rest</div><div class="itemSub">Demo list. Next: booking API.</div></div>'+
             '<div class="hr"></div><div class="list">'+listH+'</div>';
 
           $all(".hotelBtn").forEach(function(b){ b.addEventListener("click", function(){ toast(t("demoHotel")); }); });
           return;
         }
 
+        // -------- Nearby --------
         if(route === "nearby"){
           var listN = DEMO.nearby.map(function(p){
             return ''+
@@ -636,6 +763,7 @@
                 '<div class="row"><button class="btn nearBtn">🧭 '+escapeHtml(t("nearby"))+'</button></div>'+
               '</div>';
           }).join("");
+
           $("view").innerHTML =
             '<h3 class="sectionTitle">'+escapeHtml(t("nearby"))+'</h3>'+
             '<div class="item"><div class="itemTitle">Places nearby</div><div class="itemSub">Demo. Next: Places API.</div></div>'+
@@ -646,7 +774,6 @@
         }
       }
 
-      // ---------- Language UI ----------
       function buildLangSelect(){
         var sel = $("lang");
         sel.innerHTML = "";
@@ -667,50 +794,20 @@
         sel.value = has ? initial : "en";
       }
 
-      function applyTexts(){
-        $("tLocate").textContent = t("locate");
-        $("tShare").textContent = t("share");
-        $("tMapTitle").textContent = t("map");
-        $("tMapPlaceholder").textContent = t("mapPlaceholder");
-        $("tCoordLabel").textContent = t("coord");
-        $("tDisclaimer").textContent = t("disclaimer");
-        $("tDrawerNote").textContent = t("note");
-
-        $("tNavNav").textContent = t("nav");
-        $("tNavTolls").textContent = t("tolls");
-        $("tNavFuel").textContent = t("fuel");
-        $("tNavHotels").textContent = t("hotels");
-        $("tNavNearby").textContent = t("nearby");
-      }
-
-      // ---------- Share ----------
-      function shareLink(){
-        var url = location.href;
-        if(navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(url).then(function(){ toast("Copied"); })
-            .catch(function(){ prompt("Copy link:", url); });
-        } else {
-          prompt("Copy link:", url);
-        }
-      }
-
-      // ---------- Init ----------
       function init(){
         buildLangSelect();
         applyTexts();
 
-        // restore position
         var pos = getPos();
         if(pos) $("coord").textContent = pos.lat.toFixed(5)+", "+pos.lng.toFixed(5);
 
-        // events
         $("btnMenu").addEventListener("click", openDrawer);
         $("btnClose").addEventListener("click", closeDrawer);
         $("backdrop").addEventListener("click", closeDrawer);
 
         $all(".navItem").forEach(function(btn){
           btn.addEventListener("click", function(){
-            var route = btn.getAttribute("data-route") || "navigator";
+            var route = btn.getAttribute("data-route") || "vehicle";
             closeDrawer();
             location.hash = "#"+route;
             render(route);
@@ -730,14 +827,8 @@
           render(getRouteFromHash());
         });
 
-        // start
         $("pillStatus").textContent = "Demo";
         render(getRouteFromHash());
-      }
-
-      function getRouteFromHash(){
-        var h = (location.hash || "").replace("#","");
-        return ROUTES.indexOf(h) >= 0 ? h : "navigator";
       }
 
       init();
