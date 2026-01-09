@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>GTTS</title>
   <meta name="description" content="GTTS: Vehicle • Navigator • Tolls • Fuel • Hotels • Nearby" />
+  <meta name="color-scheme" content="dark" />
 
   <style>
     :root{
@@ -18,12 +19,13 @@
       --brand2:#2563eb;
       --shadow:0 12px 30px rgba(0,0,0,.35);
 
-      /* warm icon palette */
-      --warm1:#f59e0b; /* amber */
-      --warm2:#fb7185; /* rose */
-      --warm3:#fbbf24; /* yellow */
-      --warm4:#fdba74; /* orange */
-      --warm5:#f97316; /* orange strong */
+      /* refined red on light-blue background, wide border */
+      --iconBg:#BFE6FF;
+      --iconBorder:#0B2A3D;
+      --iconRed1:#B11226;
+      --iconRed2:#E11D48;
+      --iconRed3:#7F0B1A;
+      --iconHi:#FFD1D9;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -130,7 +132,7 @@
       color:var(--muted);
     }
     .mapBig{font-size:42px}
-    .mapText{max-width:480px}
+    .mapText{max-width:520px}
 
     .mapBar{
       display:flex; gap:10px; align-items:center;
@@ -174,7 +176,7 @@
 
     .field{
       display:grid;
-      grid-template-columns: 190px 1fr;
+      grid-template-columns: 240px 1fr;
       gap:10px;
       align-items:center;
       margin:10px 0;
@@ -192,7 +194,7 @@
     }
     select.input{appearance:auto}
 
-    .hint{color:var(--muted); font-size:12px; margin-top:8px}
+    .hint{color:var(--muted); font-size:12px; margin-top:8px; line-height:1.35}
 
     .footer{
       max-width:1200px;
@@ -265,76 +267,101 @@
     }
     .toast.show{opacity:1}
 
-    /* Custom vehicle type dropdown with images */
-    .vtypeWrap{position:relative}
-    .vtypeBtn{
+    /* Custom vehicle-type dropdown (supports icons) */
+    .vselect{position:relative}
+    .vselectBtn{
       width:100%;
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:10px 10px;
-      border-radius:10px;
-      border:1px solid rgba(148,163,184,.25);
+      display:flex; align-items:center; gap:12px;
       background:rgba(2,6,23,.5);
-      color:var(--text);
-      cursor:pointer;
-      font-weight:900;
-      text-align:left;
-    }
-    .vtypeLeft{display:flex; align-items:center; gap:10px; min-width:0}
-    .vtypeIcon{
-      width:34px; height:34px;
-      flex:0 0 auto;
+      border:1px solid rgba(148,163,184,.25);
       border-radius:10px;
+      padding:10px 10px;
+      cursor:pointer;
+      color:var(--text);
+      font-weight:900;
+    }
+    .vselectBtn:focus{outline:2px solid rgba(56,189,248,.5); outline-offset:2px}
+
+    /* 2 cm x 2 cm approx at 96dpi => ~76px */
+    .vselectThumb{
+      width:76px; height:76px; flex:0 0 auto;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
       border:1px solid rgba(148,163,184,.18);
-      background:rgba(255,255,255,.02);
       display:flex; align-items:center; justify-content:center;
       overflow:hidden;
     }
-    .vtypeLabel{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-    .vtypeChevron{opacity:.8}
-    .vtypePanel{
-      position:absolute;
-      z-index:30;
-      top:calc(100% + 8px);
-      left:0; right:0;
+    .vselectThumb svg{width:76px; height:76px; display:block}
+
+    .vselectText{display:flex; flex-direction:column; gap:4px; flex:1}
+    .vselectCode{font-size:12px; color:var(--muted); font-weight:900}
+    .vselectLabel{font-size:13px; font-weight:1000}
+    .vselectCaret{margin-left:auto; color:var(--muted)}
+    .vselectMenu{
+      position:absolute; left:0; right:0; top:calc(100% + 8px);
       background:rgba(2,6,23,.98);
-      border:1px solid rgba(30,41,59,.9);
-      border-radius:14px;
+      border:1px solid rgba(148,163,184,.25);
+      border-radius:12px;
       box-shadow:var(--shadow);
-      padding:8px;
-      max-height:320px;
+      max-height:380px;
       overflow:auto;
+      z-index:999;
+      padding:8px;
       display:none;
     }
-    .vtypePanel.open{display:block}
-    .vtypeGroup{
-      padding:8px 8px 6px;
+    .vselect.open .vselectMenu{display:block}
+    .vgroup{
+      padding:10px 8px 6px;
       color:var(--muted);
       font-weight:1000;
       font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.06em;
     }
-    .vtypeItem{
-      display:flex;
+    .vopt{
+      display:flex; align-items:center; gap:12px;
+      padding:10px 8px;
+      border-radius:12px;
+      cursor:pointer;
+      border:1px solid transparent;
+    }
+    .vopt:hover{background:rgba(255,255,255,.06)}
+    .vopt.active{border-color:rgba(56,189,248,.55); background:rgba(56,189,248,.08)}
+    .vopt .vselectThumb{width:76px; height:76px}
+
+    /* Trailer toggle button */
+    .toggleBtn{
+      display:inline-flex;
       align-items:center;
       gap:10px;
-      padding:10px 10px;
-      border-radius:12px;
-      border:1px solid rgba(148,163,184,.12);
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,.35);
       background:rgba(2,6,23,.35);
+      color:var(--text);
       cursor:pointer;
-      margin:6px 0;
+      font-weight:1000;
     }
-    .vtypeItem:hover{border-color: rgba(56,189,248,.6)}
-    .vtypeMeta{display:flex; flex-direction:column; gap:2px; min-width:0}
-    .vtypeCode{font-weight:1000}
-    .vtypeDesc{font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .toggleDot{
+      width:14px; height:14px;
+      border-radius:999px;
+      border:2px solid rgba(148,163,184,.45);
+      background:transparent;
+    }
+    .toggleBtn.on{
+      border-color: rgba(56,189,248,.7);
+      background: rgba(56,189,248,.10);
+    }
+    .toggleBtn.on .toggleDot{
+      background: rgba(56,189,248,.9);
+      border-color: rgba(56,189,248,.9);
+    }
 
     @media (max-width: 980px){
       .grid{grid-template-columns:1fr}
       .map{height:420px}
       .field{grid-template-columns: 1fr}
+      .vselectThumb{width:72px; height:72px}
+      .vselectThumb svg{width:72px; height:72px}
+      .vopt .vselectThumb{width:72px; height:72px}
     }
   </style>
 </head>
@@ -345,7 +372,7 @@
 
     <div class="brand">
       <div class="logo">GTTS</div>
-      <div class="subtitle">Vehicle • Navigator • Tolls • Fuel • Hotels • Nearby</div>
+      <div class="subtitle" id="subTitle">Vehicle • Navigator • Tolls • Fuel • Hotels • Nearby</div>
     </div>
 
     <div class="right">
@@ -450,7 +477,6 @@
 
       var ROUTES = ["vehicle","navigator","tolls","fuel","hotels","nearby"];
 
-      // Languages (MVP)
       var LANGS = [
         {code:"en", label:"English"},
         {code:"uk", label:"Українська"},
@@ -466,68 +492,76 @@
         {code:"nl", label:"Nederlands"},
       ];
 
-      // i18n
-      var T = {
+      /* i18n */
+      var I18N = {
         en: {
           locate:"Locate", share:"Share", map:"Map",
           coord:"Coordinates:", disclaimer:"Prototype. Do not use for real payments.",
           note:"MVP demo (no real payments).",
           vehicle:"Vehicle", vehicleTitle:"Vehicle profile",
           vehicleDesc:"Vehicle parameters used for tolls, fuel and compliance.",
-          nav:"Navigator", tolls:"Tolls", fuel:"Fuel", hotels:"Hotels", nearby:"Nearby",
-          mapPlaceholder:"Map placeholder. Click “Locate” to set your position, then browse modules.",
-          posUnknown:"Unknown (click Locate)",
           plate:"Plate number",
           country:"Country",
-          type:"Vehicle type (EU category)",
+          type:"Vehicle type (EU)",
           fuelType:"Fuel type",
           emission:"Emission class",
           axles:"Axles",
-          save:"Save", reset:"Reset to demo",
-          saved:"Saved", resetDone:"Reset",
-          // Select placeholders
-          chooseCountry:"Choose country",
-          chooseFuel:"Choose fuel type",
-          chooseEco:"Choose emission class",
-          chooseAxles:"Choose axles",
-          chooseType:"Choose vehicle type",
-          // Fuel options
-          fuelDiesel:"Diesel",
-          fuelPetrol:"Petrol",
-          fuelLPG:"LPG",
-          fuelCNG:"CNG",
-          fuelLNG:"LNG",
-          fuelElectric:"Electric",
-          fuelHybrid:"Hybrid",
-          fuelHydrogen:"Hydrogen",
-          // Eco options
-          euro0:"Euro 0 / Pre-Euro",
-          euro1:"Euro 1",
-          euro2:"Euro 2",
-          euro3:"Euro 3",
-          euro4:"Euro 4",
-          euro5:"Euro 5",
-          euro6:"Euro 6",
-          euro6d:"Euro 6d",
-          euro6e:"Euro 6e",
-          // Vehicle type group names
-          groupL:"L (2/3-wheel, quadricycles)",
-          groupM:"M (passenger)",
-          groupN:"N (goods)",
-          groupO:"O (trailers)",
-          groupAgri:"T/C/R/S (agri & towed equipment)",
-          // Vehicle type short descriptions
-          vL:"Motorcycles / mopeds / quads",
-          vM1:"Passenger car (≤8 seats)",
-          vM2:"Bus (≤5t)",
-          vM3:"Bus (>5t)",
-          vN1:"Goods (≤3.5t)",
-          vN2:"Goods (3.5–12t)",
-          vN3:"Goods (>12t)",
-          vO:"Trailer category",
-          vT:"Agricultural tractor / trailer",
-          // Other
-          tipAxles:"Tip: for heavy trucks and combinations, axles usually 4–9."
+          save:"Save",
+          reset:"Reset to demo",
+          saved:"Saved",
+          resetDone:"Reset",
+          reqHint:"Tip: Axles are important for heavy vehicles and vehicles with trailers.",
+          nav:"Navigator", tolls:"Tolls", fuel:"Fuel", hotels:"Hotels", nearby:"Nearby",
+          mapPlaceholder:"Map placeholder. Click “Locate” to set your position, then browse modules.",
+          posUnknown:"Unknown (click Locate)",
+          demoPay:"Demo toll payment (stub).",
+          demoFuel:"Demo fuel session (stub).",
+          demoHotel:"Demo booking (stub).",
+          demoNearby:"Demo route to place (stub).",
+          /* groups */
+          gL:"L (mopeds & motorcycles)",
+          gM:"M (passenger)",
+          gN:"N (goods)",
+          /* generic */
+          select:"Select…",
+          /* fuels */
+          f_diesel:"Diesel",
+          f_petrol:"Petrol",
+          f_lpg:"LPG",
+          f_cng:"CNG",
+          f_lng:"LNG",
+          f_electric:"Electric",
+          f_hydrogen:"Hydrogen",
+          f_hybrid:"Hybrid",
+          /* eco */
+          e_euro0:"Euro 0 / Unknown",
+          e_euro1:"Euro 1",
+          e_euro2:"Euro 2",
+          e_euro3:"Euro 3",
+          e_euro4:"Euro 4",
+          e_euro5:"Euro 5",
+          e_euro6:"Euro 6",
+          e_euro6d:"Euro 6d",
+          e_euroVI:"Euro VI (HDV)",
+          /* axles */
+          a_2:"2", a_3:"3", a_4:"4", a_5:"5", a_6:"6", a_7:"7", a_8:"8", a_9:"9", a_10:"10+",
+          /* countries (EU + UK/UA) */
+          c_PL:"Poland", c_DE:"Germany", c_FR:"France", c_ES:"Spain", c_IT:"Italy", c_NL:"Netherlands", c_BE:"Belgium",
+          c_LU:"Luxembourg", c_AT:"Austria", c_CZ:"Czechia", c_SK:"Slovakia", c_HU:"Hungary", c_RO:"Romania",
+          c_BG:"Bulgaria", c_HR:"Croatia", c_SI:"Slovenia", c_LT:"Lithuania", c_LV:"Latvia", c_EE:"Estonia",
+          c_FI:"Finland", c_SE:"Sweden", c_DK:"Denmark", c_IE:"Ireland", c_PT:"Portugal", c_GR:"Greece",
+          c_CY:"Cyprus", c_MT:"Malta",
+          c_UK:"United Kingdom",
+          c_UA:"Ukraine",
+          /* trailer + weights */
+          withTrailer:"With trailer",
+          trailerPlate:"Trailer plate number",
+          gvwr:"Gross vehicle weight (GVW)",
+          gtw:"Gross trailer weight (GTW)",
+          w_35:"≤ 3.5 t",
+          w_3575:"3.5–7.5 t",
+          w_7512:"7.5–12 t",
+          w_12p:"> 12 t"
         },
         uk: {
           locate:"Геолокація", share:"Поділитись", map:"Мапа",
@@ -535,54 +569,61 @@
           note:"MVP демо (без реальних оплат).",
           vehicle:"Автомобіль", vehicleTitle:"Профіль автомобіля",
           vehicleDesc:"Параметри авто для оплати доріг, заправки та відповідності.",
-          nav:"Навігатор", tolls:"Оплата доріг", fuel:"Заправка", hotels:"Готелі", nearby:"Місця поруч",
-          mapPlaceholder:"Заглушка мапи. Натисни “Геолокація”, щоб встановити позицію, і обирай модулі.",
-          posUnknown:"Невідомо (натисни Геолокація)",
           plate:"Номер",
           country:"Країна",
           type:"Тип транспортного засобу (ЄС)",
           fuelType:"Тип пального",
           emission:"Еко-клас",
           axles:"Кількість осей",
-          save:"Зберегти", reset:"Скинути демо",
-          saved:"Збережено", resetDone:"Скинуто",
-          chooseCountry:"Оберіть країну",
-          chooseFuel:"Оберіть тип пального",
-          chooseEco:"Оберіть еко-клас",
-          chooseAxles:"Оберіть кількість осей",
-          chooseType:"Оберіть тип ТЗ",
-          fuelDiesel:"Дизель",
-          fuelPetrol:"Бензин",
-          fuelLPG:"LPG (скраплений газ)",
-          fuelCNG:"CNG (стиснений газ)",
-          fuelLNG:"LNG (зріджений газ)",
-          fuelElectric:"Електро",
-          fuelHybrid:"Гібрид",
-          fuelHydrogen:"Водень",
-          euro0:"Euro 0 / до-Euro",
-          euro1:"Euro 1",
-          euro2:"Euro 2",
-          euro3:"Euro 3",
-          euro4:"Euro 4",
-          euro5:"Euro 5",
-          euro6:"Euro 6",
-          euro6d:"Euro 6d",
-          euro6e:"Euro 6e",
-          groupL:"L (мото/мопеди/квадроцикли)",
-          groupM:"M (пасажирські)",
-          groupN:"N (вантажні)",
-          groupO:"O (причепи)",
-          groupAgri:"T/C/R/S (с/г та причіпне)",
-          vL:"Мотоцикли / мопеди / квадро",
-          vM1:"Легкове авто (≤8 місць)",
-          vM2:"Автобус (≤5т)",
-          vM3:"Автобус (>5т)",
-          vN1:"Вантажні (≤3.5т)",
-          vN2:"Вантажні (3.5–12т)",
-          vN3:"Вантажні (>12т)",
-          vO:"Категорія причепа",
-          vT:"С/г трактор / причіп",
-          tipAxles:"Підказка: для тягачів/автопоїздів зазвичай 4–9 осей."
+          save:"Зберегти",
+          reset:"Скинути демо",
+          saved:"Збережено",
+          resetDone:"Скинуто",
+          reqHint:"Порада: Осі важливі для важких ТЗ та ТЗ з причепами.",
+          nav:"Навігатор", tolls:"Оплата доріг", fuel:"Заправка", hotels:"Готелі", nearby:"Місця поруч",
+          mapPlaceholder:"Заглушка мапи. Натисни “Геолокація”, щоб встановити позицію, і обирай модулі.",
+          posUnknown:"Невідомо (натисни Геолокація)",
+          demoPay:"Демо оплати доріг (stub).",
+          demoFuel:"Демо заправки (stub).",
+          demoHotel:"Демо бронювання (stub).",
+          demoNearby:"Демо маршруту до місця (stub).",
+          gL:"L (мопеди та мотоцикли)",
+          gM:"M (пасажирські)",
+          gN:"N (вантажні)",
+          select:"Оберіть…",
+          f_diesel:"Дизель",
+          f_petrol:"Бензин",
+          f_lpg:"LPG (газ)",
+          f_cng:"CNG (метан)",
+          f_lng:"LNG (зрідж. газ)",
+          f_electric:"Електро",
+          f_hydrogen:"Водень",
+          f_hybrid:"Гібрид",
+          e_euro0:"Euro 0 / Невідомо",
+          e_euro1:"Euro 1",
+          e_euro2:"Euro 2",
+          e_euro3:"Euro 3",
+          e_euro4:"Euro 4",
+          e_euro5:"Euro 5",
+          e_euro6:"Euro 6",
+          e_euro6d:"Euro 6d",
+          e_euroVI:"Euro VI (HDV)",
+          a_2:"2", a_3:"3", a_4:"4", a_5:"5", a_6:"6", a_7:"7", a_8:"8", a_9:"9", a_10:"10+",
+          c_PL:"Польща", c_DE:"Німеччина", c_FR:"Франція", c_ES:"Іспанія", c_IT:"Італія", c_NL:"Нідерланди", c_BE:"Бельгія",
+          c_LU:"Люксембург", c_AT:"Австрія", c_CZ:"Чехія", c_SK:"Словаччина", c_HU:"Угорщина", c_RO:"Румунія",
+          c_BG:"Болгарія", c_HR:"Хорватія", c_SI:"Словенія", c_LT:"Литва", c_LV:"Латвія", c_EE:"Естонія",
+          c_FI:"Фінляндія", c_SE:"Швеція", c_DK:"Данія", c_IE:"Ірландія", c_PT:"Португалія", c_GR:"Греція",
+          c_CY:"Кіпр", c_MT:"Мальта",
+          c_UK:"Велика Британія",
+          c_UA:"Україна",
+          withTrailer:"З причепом",
+          trailerPlate:"Номер причепа",
+          gvwr:"Повна маса транспортного засобу",
+          gtw:"Повна маса причепа",
+          w_35:"≤ 3,5 т",
+          w_3575:"3,5–7,5 т",
+          w_7512:"7,5–12 т",
+          w_12p:"> 12 т"
         },
         ru: {
           locate:"Геолокация", share:"Поделиться", map:"Карта",
@@ -590,264 +631,147 @@
           note:"MVP демо (без реальных оплат).",
           vehicle:"Автомобиль", vehicleTitle:"Профиль автомобиля",
           vehicleDesc:"Параметры ТС для дорог, топлива и соответствия.",
-          nav:"Навигатор", tolls:"Оплата дорог", fuel:"Заправка", hotels:"Отели", nearby:"Места рядом",
-          mapPlaceholder:"Заглушка карты. Нажми “Геолокация”, чтобы установить позицию, и выбирай модули.",
-          posUnknown:"Неизвестно (нажми Геолокация)",
           plate:"Номер",
           country:"Страна",
           type:"Тип транспортного средства (ЕС)",
           fuelType:"Тип топлива",
           emission:"Эко-класс",
           axles:"Количество осей",
-          save:"Сохранить", reset:"Сбросить демо",
-          saved:"Сохранено", resetDone:"Сброшено",
-          chooseCountry:"Выберите страну",
-          chooseFuel:"Выберите тип топлива",
-          chooseEco:"Выберите эко-класс",
-          chooseAxles:"Выберите количество осей",
-          chooseType:"Выберите тип ТС",
-          fuelDiesel:"Дизель",
-          fuelPetrol:"Бензин",
-          fuelLPG:"LPG (сжиж. газ)",
-          fuelCNG:"CNG (сжатый газ)",
-          fuelLNG:"LNG (сжиженный газ)",
-          fuelElectric:"Электро",
-          fuelHybrid:"Гибрид",
-          fuelHydrogen:"Водород",
-          euro0:"Euro 0 / до-Euro",
-          euro1:"Euro 1",
-          euro2:"Euro 2",
-          euro3:"Euro 3",
-          euro4:"Euro 4",
-          euro5:"Euro 5",
-          euro6:"Euro 6",
-          euro6d:"Euro 6d",
-          euro6e:"Euro 6e",
-          groupL:"L (мото/мопеды/квадроциклы)",
-          groupM:"M (пассажирские)",
-          groupN:"N (грузовые)",
-          groupO:"O (прицепы)",
-          groupAgri:"T/C/R/S (с/х и прицепное)",
-          vL:"Мотоциклы / мопеды / квадро",
-          vM1:"Легковое (≤8 мест)",
-          vM2:"Автобус (≤5т)",
-          vM3:"Автобус (>5т)",
-          vN1:"Грузовые (≤3.5т)",
-          vN2:"Грузовые (3.5–12т)",
-          vN3:"Грузовые (>12т)",
-          vO:"Категория прицепа",
-          vT:"С/х трактор / прицеп",
-          tipAxles:"Подсказка: для тягачей/автопоездов обычно 4–9 осей."
+          save:"Сохранить",
+          reset:"Сбросить демо",
+          saved:"Сохранено",
+          resetDone:"Сброшено",
+          reqHint:"Подсказка: Оси важны для тяжёлых ТС и ТС с прицепами.",
+          nav:"Навигатор", tolls:"Оплата дорог", fuel:"Заправка", hotels:"Отели", nearby:"Места рядом",
+          mapPlaceholder:"Заглушка карты. Нажми “Геолокация”, чтобы установить позицию, и выбирай модули.",
+          posUnknown:"Неизвестно (нажми Геолокация)",
+          demoPay:"Демо оплаты дорог (stub).",
+          demoFuel:"Демо заправки (stub).",
+          demoHotel:"Демо бронирования (stub).",
+          demoNearby:"Демо маршрута к месту (stub).",
+          gL:"L (мопеды и мотоциклы)",
+          gM:"M (пассажирские)",
+          gN:"N (грузовые)",
+          select:"Выберите…",
+          f_diesel:"Дизель",
+          f_petrol:"Бензин",
+          f_lpg:"LPG (газ)",
+          f_cng:"CNG (метан)",
+          f_lng:"LNG (сжиж. газ)",
+          f_electric:"Электро",
+          f_hydrogen:"Водород",
+          f_hybrid:"Гибрид",
+          e_euro0:"Euro 0 / Неизвестно",
+          e_euro1:"Euro 1",
+          e_euro2:"Euro 2",
+          e_euro3:"Euro 3",
+          e_euro4:"Euro 4",
+          e_euro5:"Euro 5",
+          e_euro6:"Euro 6",
+          e_euro6d:"Euro 6d",
+          e_euroVI:"Euro VI (HDV)",
+          a_2:"2", a_3:"3", a_4:"4", a_5:"5", a_6:"6", a_7:"7", a_8:"8", a_9:"9", a_10:"10+",
+          c_PL:"Польша", c_DE:"Германия", c_FR:"Франция", c_ES:"Испания", c_IT:"Италия", c_NL:"Нидерланды", c_BE:"Бельгия",
+          c_LU:"Люксембург", c_AT:"Австрия", c_CZ:"Чехия", c_SK:"Словакия", c_HU:"Венгрия", c_RO:"Румыния",
+          c_BG:"Болгария", c_HR:"Хорватия", c_SI:"Словения", c_LT:"Литва", c_LV:"Латвия", c_EE:"Эстония",
+          c_FI:"Финляндия", c_SE:"Швеция", c_DK:"Дания", c_IE:"Ирландия", c_PT:"Португалия", c_GR:"Греция",
+          c_CY:"Кипр", c_MT:"Мальта",
+          c_UK:"Великобритания",
+          c_UA:"Украина",
+          withTrailer:"С прицепом",
+          trailerPlate:"Номер прицепа",
+          gvwr:"Полная масса ТС",
+          gtw:"Полная масса прицепа",
+          w_35:"≤ 3,5 т",
+          w_3575:"3,5–7,5 т",
+          w_7512:"7,5–12 т",
+          w_12p:"> 12 т"
         }
       };
 
-      function langNow(){ return $("lang").value || "uk"; }
       function t(key){
-        var lang = langNow();
-        var dict = T[lang] || T.en;
-        return (dict && dict[key]) ? dict[key] : (T.en[key] || key);
+        var lang = $("lang").value || "uk";
+        var dict = I18N[lang] || I18N.en;
+        return (dict && dict[key]) ? dict[key] : (I18N.en[key] || key);
       }
 
-      // Country list: EU + UK + UA + NO + CH (you can extend)
-      var COUNTRIES = [
-        "AT","BE","BG","HR","CY","CZ","DK","EE","FI","FR","DE","GR","HU","IE","IT","LV","LT","LU","MT","NL",
-        "PL","PT","RO","SK","SI","ES","SE",
-        "UA","GB","NO","CH"
+      // ---- NEW refined SVG icons: red vehicle on light-blue background with wide border ----
+      function svgIcon(kind){
+        // 76x76 viewBox
+        // Wide border: stroke-width 6 around the rect, plus inner padding.
+        var bg = '<rect x="3" y="3" width="70" height="70" rx="14" fill="var(--iconBg)" stroke="var(--iconBorder)" stroke-width="6"/>';
+        if(kind === "moto"){
+          return '' +
+            '<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+              bg +
+              '<circle cx="24" cy="50" r="9" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<circle cx="54" cy="50" r="9" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<path d="M26 50h13l8-16h10" fill="none" stroke="var(--iconRed1)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>' +
+              '<path d="M38 34l-6 12" fill="none" stroke="var(--iconRed3)" stroke-width="5" stroke-linecap="round"/>' +
+              '<path d="M40 34h12" fill="none" stroke="var(--iconHi)" stroke-width="4" stroke-linecap="round" opacity=".9"/>' +
+              '<path d="M46 28c4 0 6 2 7 5" fill="none" stroke="var(--iconRed3)" stroke-width="4" stroke-linecap="round" opacity=".9"/>' +
+            '</svg>';
+        }
+        if(kind === "bus"){
+          return '' +
+            '<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+              bg +
+              '<rect x="16" y="24" width="44" height="28" rx="12" fill="none" stroke="var(--iconRed1)" stroke-width="5"/>' +
+              '<rect x="22" y="30" width="24" height="10" rx="4" fill="var(--iconHi)" opacity=".9" stroke="var(--iconRed3)" stroke-width="2"/>' +
+              '<rect x="48" y="30" width="8" height="18" rx="4" fill="var(--iconHi)" opacity=".9" stroke="var(--iconRed3)" stroke-width="2"/>' +
+              '<circle cx="28" cy="54" r="7" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<circle cx="52" cy="54" r="7" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<path d="M18 42h40" stroke="var(--iconRed3)" stroke-width="3" opacity=".7"/>' +
+            '</svg>';
+        }
+        if(kind === "truck"){
+          return '' +
+            '<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+              bg +
+              '<rect x="14" y="34" width="28" height="16" rx="7" fill="none" stroke="var(--iconRed1)" stroke-width="5"/>' +
+              '<rect x="42" y="30" width="20" height="20" rx="7" fill="var(--iconHi)" opacity=".9" stroke="var(--iconRed3)" stroke-width="3"/>' +
+              '<rect x="46" y="34" width="9" height="7" rx="3" fill="var(--iconBg)" opacity=".9" stroke="var(--iconRed2)" stroke-width="2"/>' +
+              '<circle cx="26" cy="54" r="8" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<circle cx="54" cy="54" r="8" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+              '<path d="M14 50h48" stroke="var(--iconRed3)" stroke-width="3" opacity=".7"/>' +
+            '</svg>';
+        }
+        // car default
+        return '' +
+          '<svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            bg +
+            '<rect x="14" y="38" width="48" height="16" rx="10" fill="none" stroke="var(--iconRed1)" stroke-width="5"/>' +
+            '<path d="M22 38c4-10 10-14 19-14h6c9 0 15 4 19 14" fill="var(--iconHi)" opacity=".9" stroke="var(--iconRed3)" stroke-width="3" />' +
+            '<circle cx="26" cy="54" r="8" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+            '<circle cx="50" cy="54" r="8" fill="none" stroke="var(--iconRed2)" stroke-width="4"/>' +
+          '</svg>';
+      }
+
+      // ---- EU vehicle categories (without trailers and agri). Mopeds+motorcycles unified. ----
+      // Kind => which icon to show.
+      var EU_TYPES = [
+        { groupKey:"gL", kind:"moto", items: [
+          { code:"L", labelEn:"L — Mopeds & motorcycles (2/3-wheel)", labelUk:"L — Мопеди та мотоцикли (2/3-колісні)", labelRu:"L — Мопеды и мотоциклы (2/3-колёсные)" }
+        ]},
+        { groupKey:"gM", kind:"bus", items: [
+          { code:"M1", labelEn:"M1 — passenger car (≤8 seats)", labelUk:"M1 — легковий (≤8 місць)", labelRu:"M1 — легковой (≤8 мест)" },
+          { code:"M2", labelEn:"M2 — bus (≤5t)", labelUk:"M2 — автобус (≤5т)", labelRu:"M2 — автобус (≤5т)" },
+          { code:"M3", labelEn:"M3 — bus (>5t)", labelUk:"M3 — автобус (>5т)", labelRu:"M3 — автобус (>5т)" }
+        ]},
+        { groupKey:"gN", kind:"truck", items: [
+          { code:"N1", labelEn:"N1 — goods (≤3.5t)", labelUk:"N1 — вантажний (≤3,5т)", labelRu:"N1 — грузовой (≤3,5т)" },
+          { code:"N2", labelEn:"N2 — goods (3.5–12t)", labelUk:"N2 — вантажний (3,5–12т)", labelRu:"N2 — грузовой (3,5–12т)" },
+          { code:"N3", labelEn:"N3 — goods (>12t)", labelUk:"N3 — вантажний (>12т)", labelRu:"N3 — грузовой (>12т)" }
+        ]}
       ];
 
-      // Fuel types
-      var FUEL_TYPES = [
-        { code:"diesel", key:"fuelDiesel" },
-        { code:"petrol", key:"fuelPetrol" },
-        { code:"lpg", key:"fuelLPG" },
-        { code:"cng", key:"fuelCNG" },
-        { code:"lng", key:"fuelLNG" },
-        { code:"electric", key:"fuelElectric" },
-        { code:"hybrid", key:"fuelHybrid" },
-        { code:"hydrogen", key:"fuelHydrogen" },
-      ];
-
-      // Eco classes (common)
-      var ECO_CLASSES = [
-        { code:"euro0", key:"euro0" },
-        { code:"euro1", key:"euro1" },
-        { code:"euro2", key:"euro2" },
-        { code:"euro3", key:"euro3" },
-        { code:"euro4", key:"euro4" },
-        { code:"euro5", key:"euro5" },
-        { code:"euro6", key:"euro6" },
-        { code:"euro6d", key:"euro6d" },
-        { code:"euro6e", key:"euro6e" },
-      ];
-
-      // Axles 2..9 (MVP)
-      var AXLES = ["2","3","4","5","6","7","8","9"];
-
-      // Warm, light SVG icons (generated here)
-      function svgCar(){
-        return (
-          '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">' +
-          '<defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="var(--warm3)"/><stop offset="1" stop-color="var(--warm2)"/>' +
-          '</linearGradient></defs>' +
-          '<rect x="6" y="10" width="52" height="44" rx="14" fill="rgba(255,255,255,.04)" />' +
-          '<path d="M16 35l6-12c1-2 3-3 5-3h10c2 0 4 1 5 3l6 12" fill="url(#g1)" opacity=".95"/>' +
-          '<rect x="14" y="33" width="36" height="10" rx="5" fill="rgba(2,6,23,.55)" />' +
-          '<circle cx="22" cy="45" r="5" fill="var(--warm4)"/>' +
-          '<circle cx="42" cy="45" r="5" fill="var(--warm4)"/>' +
-          '<rect x="24" y="24" width="16" height="6" rx="3" fill="rgba(255,255,255,.18)"/>' +
-          '</svg>'
-        );
+      function getLang(){ return $("lang").value || "uk"; }
+      function typeLabel(it){
+        var lang = getLang();
+        if(lang === "uk") return it.labelUk;
+        if(lang === "ru") return it.labelRu;
+        return it.labelEn;
       }
-      function svgTruck(){
-        return (
-          '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">' +
-          '<defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="var(--warm1)"/><stop offset="1" stop-color="var(--warm5)"/>' +
-          '</linearGradient></defs>' +
-          '<rect x="6" y="10" width="52" height="44" rx="14" fill="rgba(255,255,255,.04)" />' +
-          '<rect x="14" y="26" width="26" height="16" rx="4" fill="url(#g2)" opacity=".95"/>' +
-          '<path d="M40 30h8c2 0 3 1 4 3l2 5v4H40z" fill="var(--warm2)" opacity=".9"/>' +
-          '<rect x="18" y="29" width="10" height="6" rx="2" fill="rgba(255,255,255,.18)"/>' +
-          '<circle cx="24" cy="45" r="4.6" fill="var(--warm4)"/>' +
-          '<circle cx="44" cy="45" r="4.6" fill="var(--warm4)"/>' +
-          '<circle cx="52" cy="45" r="4.6" fill="var(--warm4)"/>' +
-          '</svg>'
-        );
-      }
-      function svgBus(){
-        return (
-          '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">' +
-          '<defs><linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="var(--warm2)"/><stop offset="1" stop-color="var(--warm3)"/>' +
-          '</linearGradient></defs>' +
-          '<rect x="6" y="10" width="52" height="44" rx="14" fill="rgba(255,255,255,.04)" />' +
-          '<rect x="14" y="22" width="36" height="22" rx="6" fill="url(#g3)" opacity=".92"/>' +
-          '<rect x="18" y="26" width="9" height="8" rx="2" fill="rgba(255,255,255,.18)"/>' +
-          '<rect x="29" y="26" width="9" height="8" rx="2" fill="rgba(255,255,255,.18)"/>' +
-          '<rect x="40" y="26" width="8" height="8" rx="2" fill="rgba(255,255,255,.18)"/>' +
-          '<circle cx="24" cy="46" r="4.6" fill="var(--warm4)"/>' +
-          '<circle cx="42" cy="46" r="4.6" fill="var(--warm4)"/>' +
-          '</svg>'
-        );
-      }
-      function svgTrailer(){
-        return (
-          '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">' +
-          '<defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="var(--warm4)"/><stop offset="1" stop-color="var(--warm1)"/>' +
-          '</linearGradient></defs>' +
-          '<rect x="6" y="10" width="52" height="44" rx="14" fill="rgba(255,255,255,.04)" />' +
-          '<rect x="16" y="26" width="30" height="14" rx="4" fill="url(#g4)" opacity=".94"/>' +
-          '<path d="M12 33h6" stroke="rgba(255,255,255,.35)" stroke-width="3" stroke-linecap="round"/>' +
-          '<circle cx="24" cy="44" r="4.6" fill="var(--warm2)"/>' +
-          '<circle cx="38" cy="44" r="4.6" fill="var(--warm2)"/>' +
-          '</svg>'
-        );
-      }
-      function svgMoto(){
-        return (
-          '<svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">' +
-          '<defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0" stop-color="var(--warm3)"/><stop offset="1" stop-color="var(--warm5)"/>' +
-          '</linearGradient></defs>' +
-          '<rect x="6" y="10" width="52" height="44" rx="14" fill="rgba(255,255,255,.04)" />' +
-          '<circle cx="22" cy="44" r="6" fill="rgba(255,255,255,.06)" stroke="var(--warm4)" stroke-width="3"/>' +
-          '<circle cx="44" cy="44" r="6" fill="rgba(255,255,255,.06)" stroke="var(--warm4)" stroke-width="3"/>' +
-          '<path d="M22 44l10-12h8l4 6h-8l-6 6" fill="none" stroke="url(#g5)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>' +
-          '<path d="M36 30h6" stroke="rgba(255,255,255,.25)" stroke-width="3" stroke-linecap="round"/>' +
-          '</svg>'
-        );
-      }
-      function iconForType(code){
-        // pick representative icons
-        if (code === "M1") return svgCar();
-        if (code === "M2" || code === "M3") return svgBus();
-        if (code === "N1" || code === "N2" || code === "N3") return svgTruck();
-        if (code === "O1" || code === "O2" || code === "O3" || code === "O4") return svgTrailer();
-        if (code.indexOf("L") === 0) return svgMoto();
-        // fallback
-        return svgTruck();
-      }
-
-      // EU vehicle categories (codes stored as value)
-      function vehicleTypes(){
-        return [
-          { groupKey:"groupL", items: [
-            { code:"L1e", name:"L1e", descKey:"vL" },
-            { code:"L2e", name:"L2e", descKey:"vL" },
-            { code:"L3e", name:"L3e", descKey:"vL" },
-            { code:"L4e", name:"L4e", descKey:"vL" },
-            { code:"L5e", name:"L5e", descKey:"vL" },
-            { code:"L6e", name:"L6e", descKey:"vL" },
-            { code:"L7e", name:"L7e", descKey:"vL" },
-          ]},
-          { groupKey:"groupM", items: [
-            { code:"M1", name:"M1", descKey:"vM1" },
-            { code:"M2", name:"M2", descKey:"vM2" },
-            { code:"M3", name:"M3", descKey:"vM3" },
-          ]},
-          { groupKey:"groupN", items: [
-            { code:"N1", name:"N1", descKey:"vN1" },
-            { code:"N2", name:"N2", descKey:"vN2" },
-            { code:"N3", name:"N3", descKey:"vN3" },
-          ]},
-          { groupKey:"groupO", items: [
-            { code:"O1", name:"O1", descKey:"vO" },
-            { code:"O2", name:"O2", descKey:"vO" },
-            { code:"O3", name:"O3", descKey:"vO" },
-            { code:"O4", name:"O4", descKey:"vO" },
-          ]},
-          { groupKey:"groupAgri", items: [
-            { code:"T", name:"T", descKey:"vT" },
-            { code:"C", name:"C", descKey:"vT" },
-            { code:"R", name:"R", descKey:"vT" },
-            { code:"S", name:"S", descKey:"vT" },
-          ]},
-        ];
-      }
-
-      // Country name resolver (uses Intl.DisplayNames if available)
-      function countryName(code){
-        var lang = langNow();
-        try {
-          if (window.Intl && Intl.DisplayNames) {
-            var dn = new Intl.DisplayNames([lang], { type: "region" });
-            return dn.of(code) || code;
-          }
-        } catch(e) {}
-        // fallback (minimal)
-        var fallback = {
-          en: { PL:"Poland", UA:"Ukraine", DE:"Germany", FR:"France", ES:"Spain", IT:"Italy", GB:"United Kingdom" },
-          uk: { PL:"Польща", UA:"Україна", DE:"Німеччина", FR:"Франція", ES:"Іспанія", IT:"Італія", GB:"Велика Британія" },
-          ru: { PL:"Польша", UA:"Украина", DE:"Германия", FR:"Франция", ES:"Испания", IT:"Италия", GB:"Великобритания" }
-        };
-        var map = fallback[lang] || fallback.en;
-        return map[code] || code;
-      }
-
-      // Embedded demo data (no fetch -> no 404)
-      var DEMO = {
-        tolls: [
-          { name:"A2 Demo Segment", from:"Poznan", to:"Warsaw", country:"PL", class:"N3", axles:5, estimate:"38.5 EUR" },
-          { name:"A1 Demo Segment", from:"Lodz", to:"Gdansk", country:"PL", class:"N2", axles:4, estimate:"22.0 EUR" }
-        ],
-        fuel: [
-          { name:"FuelStop A1", brand:"PartnerX", city:"Warsaw", discount:"-8%", price:"1.54 EUR/L" },
-          { name:"TruckFuel Hub", brand:"PartnerY", city:"Lodz", discount:"-6%", price:"1.49 EUR/L" },
-          { name:"Highway Diesel Point", brand:"PartnerZ", city:"Poznan", discount:"-7%", price:"1.57 EUR/L" }
-        ],
-        hotels: [
-          { name:"Truck Rest Hotel", city:"Warsaw", type:"Motel", stars:3, parking:true },
-          { name:"Highway Inn", city:"Lodz", type:"Hotel", stars:4, parking:true },
-          { name:"City Sleep", city:"Poznan", type:"Hotel", stars:3, parking:false }
-        ],
-        nearby: [
-          { name:"Old Town", city:"Warsaw", category:"Sightseeing", open:true },
-          { name:"Museum of Transport", city:"Lodz", category:"Museum", open:false },
-          { name:"City Park", city:"Poznan", category:"Nature", open:true }
-        ]
-      };
 
       function openDrawer(){
         $("drawer").classList.add("open");
@@ -909,11 +833,18 @@
           type:"N3",
           fuelType:"diesel",
           emission:"euro6",
-          axles:"5"
+          axles:"5",
+          withTrailer:false,
+          gvwr:"w_12p",   // vehicle weight bucket
+          trailerPlate:"",
+          gtw:"w_7512"    // trailer weight bucket
         };
-        try { return JSON.parse(raw); } catch(e){ return null; }
+        try {
+          var v = JSON.parse(raw);
+          if(typeof v.withTrailer !== "boolean") v.withTrailer = !!v.withTrailer;
+          return v;
+        } catch(e){ return null; }
       }
-
       function setVehicle(v){ safeSet(KEY_VEH, JSON.stringify(v)); }
 
       function setActive(route){
@@ -944,106 +875,222 @@
         $("tNavNearby").textContent = t("nearby");
       }
 
-      function buildOptions(selectEl, placeholderText, items, selectedValue, labelFn){
-        // items can be array of primitives or objects
-        var html = "";
-        html += '<option value=""' + (selectedValue ? "" : " selected") + ' disabled>' + escapeHtml(placeholderText) + '</option>';
-        for (var i=0;i<items.length;i++){
-          var it = items[i];
-          var value = (typeof it === "string") ? it : it.code;
-          var label = labelFn(it);
-          var sel = (value === selectedValue) ? " selected" : "";
-          html += '<option value="' + escapeHtml(value) + '"' + sel + '>' + escapeHtml(label) + '</option>';
+      // ---- Option builders (translated) ----
+      var COUNTRY_CODES = ["PL","DE","FR","ES","IT","NL","BE","LU","AT","CZ","SK","HU","RO","BG","HR","SI","LT","LV","EE","FI","SE","DK","IE","PT","GR","CY","MT","UK","UA"];
+
+      function buildCountryOptions(selected){
+        var html = '<option value="" disabled>' + escapeHtml(t("select")) + '</option>';
+        for (var i=0;i<COUNTRY_CODES.length;i++){
+          var cc = COUNTRY_CODES[i];
+          var key = "c_" + cc;
+          var sel = (cc === selected) ? " selected" : "";
+          html += '<option value="' + cc + '"' + sel + '>' + escapeHtml(t(key)) + ' (' + cc + ')</option>';
         }
-        selectEl.innerHTML = html;
+        return html;
       }
 
-      // Custom vehicle type dropdown
-      function renderVehicleTypePicker(containerEl, selectedCode){
-        var groups = vehicleTypes();
-        var selected = findVehicleType(selectedCode) || findVehicleType("N3");
+      var FUEL_KEYS = ["diesel","petrol","lpg","cng","lng","electric","hydrogen","hybrid"];
+      function buildFuelOptions(selected){
+        var html = '<option value="" disabled>' + escapeHtml(t("select")) + '</option>';
+        for (var i=0;i<FUEL_KEYS.length;i++){
+          var fk = FUEL_KEYS[i];
+          var key = "f_" + fk;
+          var sel = (fk === selected) ? " selected" : "";
+          html += '<option value="' + fk + '"' + sel + '>' + escapeHtml(t(key)) + '</option>';
+        }
+        return html;
+      }
 
-        containerEl.innerHTML =
-          '<div class="vtypeWrap">' +
-            '<button type="button" class="vtypeBtn" id="vtypeBtn">' +
-              '<div class="vtypeLeft">' +
-                '<div class="vtypeIcon" id="vtypeIcon">' + iconForType(selected.code) + '</div>' +
-                '<div class="vtypeLabel" id="vtypeLabel">' + escapeHtml(selected.code + " — " + selected.desc) + '</div>' +
-              '</div>' +
-              '<div class="vtypeChevron">▾</div>' +
-            '</button>' +
-            '<div class="vtypePanel" id="vtypePanel"></div>' +
-            '<input type="hidden" id="vehType" value="' + escapeHtml(selected.code) + '">' +
-          '</div>';
+      var ECO_KEYS = ["euro0","euro1","euro2","euro3","euro4","euro5","euro6","euro6d","euroVI"];
+      function buildEcoOptions(selected){
+        var html = '<option value="" disabled>' + escapeHtml(t("select")) + '</option>';
+        for (var i=0;i<ECO_KEYS.length;i++){
+          var ek = ECO_KEYS[i];
+          var key = "e_" + ek;
+          var sel = (ek === selected) ? " selected" : "";
+          html += '<option value="' + ek + '"' + sel + '>' + escapeHtml(t(key)) + '</option>';
+        }
+        return html;
+      }
 
-        var panel = $("vtypePanel");
-        var html = "";
+      var AXLE_KEYS = ["2","3","4","5","6","7","8","9","10+"];
+      function axleKeyToI18nKey(a){
+        if(a === "10+") return "a_10";
+        return "a_" + a;
+      }
+      function buildAxleOptions(selected){
+        var html = '<option value="" disabled>' + escapeHtml(t("select")) + '</option>';
+        for (var i=0;i<AXLE_KEYS.length;i++){
+          var a = AXLE_KEYS[i];
+          var key = axleKeyToI18nKey(a);
+          var sel = (a === selected) ? " selected" : "";
+          html += '<option value="' + escapeHtml(a) + '"' + sel + '>' + escapeHtml(t(key)) + '</option>';
+        }
+        return html;
+      }
 
-        html += '<div class="vtypeGroup">' + escapeHtml(t("chooseType")) + '</div>';
+      // Weight buckets required by you
+      var WEIGHT_KEYS = ["w_35","w_3575","w_7512","w_12p"];
+      function buildWeightOptions(selected){
+        var html = '<option value="" disabled>' + escapeHtml(t("select")) + '</option>';
+        for (var i=0;i<WEIGHT_KEYS.length;i++){
+          var wk = WEIGHT_KEYS[i];
+          var sel = (wk === selected) ? " selected" : "";
+          html += '<option value="' + wk + '"' + sel + '>' + escapeHtml(t(wk)) + '</option>';
+        }
+        return html;
+      }
 
-        for (var g=0; g<groups.length; g++){
-          html += '<div class="vtypeGroup">' + escapeHtml(t(groups[g].groupKey)) + '</div>';
-          for (var j=0; j<groups[g].items.length; j++){
-            var it = groups[g].items[j];
-            var desc = t(it.descKey);
-            html +=
-              '<div class="vtypeItem" data-code="' + escapeHtml(it.code) + '">' +
-                '<div class="vtypeIcon">' + iconForType(it.code) + '</div>' +
-                '<div class="vtypeMeta">' +
-                  '<div class="vtypeCode">' + escapeHtml(it.code) + '</div>' +
-                  '<div class="vtypeDesc">' + escapeHtml(desc) + '</div>' +
+      // ---- Custom vehicle type dropdown with icons ----
+      function findType(code){
+        for (var g=0; g<EU_TYPES.length; g++){
+          for (var i=0; i<EU_TYPES[g].items.length; i++){
+            if(EU_TYPES[g].items[i].code === code) return { group: EU_TYPES[g], item: EU_TYPES[g].items[i] };
+          }
+        }
+        return null;
+      }
+
+      function typeIcon(kind){
+        if(kind === "moto") return svgIcon("moto");
+        if(kind === "bus") return svgIcon("bus");
+        if(kind === "truck") return svgIcon("truck");
+        return svgIcon("car");
+      }
+
+      function renderVehicleTypeSelect(selectedCode){
+        var found = findType(selectedCode) || findType("N3");
+        var kind = found ? found.group.kind : "truck";
+        var label = found ? typeLabel(found.item) : "N3";
+        var code = found ? found.item.code : "N3";
+
+        var menu = "";
+        for (var g=0; g<EU_TYPES.length; g++){
+          var grp = EU_TYPES[g];
+          menu += '<div class="vgroup">' + escapeHtml(t(grp.groupKey)) + '</div>';
+          for (var i=0; i<grp.items.length; i++){
+            var it = grp.items[i];
+            var active = (it.code === selectedCode) ? " active" : "";
+            menu += '' +
+              '<div class="vopt' + active + '" role="option" tabindex="0" data-code="' + escapeHtml(it.code) + '">' +
+                '<div class="vselectThumb">' + typeIcon(grp.kind) + '</div>' +
+                '<div class="vselectText">' +
+                  '<div class="vselectLabel">' + escapeHtml(typeLabel(it)) + '</div>' +
+                  '<div class="vselectCode">' + escapeHtml(it.code) + '</div>' +
                 '</div>' +
               '</div>';
           }
         }
 
-        panel.innerHTML = html;
+        return '' +
+          '<div class="vselect" id="vehTypeSelect">' +
+            '<button type="button" class="vselectBtn" id="vehTypeBtn" aria-haspopup="listbox" aria-expanded="false">' +
+              '<div class="vselectThumb" id="vehTypeThumb">' + typeIcon(kind) + '</div>' +
+              '<div class="vselectText">' +
+                '<div class="vselectLabel" id="vehTypeLabel">' + escapeHtml(label) + '</div>' +
+                '<div class="vselectCode" id="vehTypeCode">' + escapeHtml(code) + '</div>' +
+              '</div>' +
+              '<div class="vselectCaret">▾</div>' +
+            '</button>' +
+            '<div class="vselectMenu" id="vehTypeMenu" role="listbox" aria-label="Vehicle type">' +
+              menu +
+            '</div>' +
+            '<input type="hidden" id="vehType" value="' + escapeHtml(code) + '">' +
+          '</div>';
+      }
 
-        var btn = $("vtypeBtn");
-        function closePanel(){ panel.classList.remove("open"); }
-        function togglePanel(){ panel.classList.toggle("open"); }
+      function wireVehicleTypeSelect(){
+        var root = $("vehTypeSelect");
+        if(!root) return;
+
+        var btn = $("vehTypeBtn");
+
+        function open(){
+          root.classList.add("open");
+          btn.setAttribute("aria-expanded","true");
+          var active = root.querySelector(".vopt.active");
+          if(active) active.focus();
+        }
+        function close(){
+          root.classList.remove("open");
+          btn.setAttribute("aria-expanded","false");
+        }
+        function toggle(){
+          if(root.classList.contains("open")) close();
+          else open();
+        }
 
         btn.addEventListener("click", function(e){
           e.preventDefault();
-          togglePanel();
+          toggle();
         });
 
-        // Click outside close
-        setTimeout(function(){
-          document.addEventListener("click", function(e){
-            var wrap = containerEl.querySelector(".vtypeWrap");
-            if (!wrap) return;
-            if (!wrap.contains(e.target)) closePanel();
-          }, { passive: true });
-        }, 0);
+        document.addEventListener("click", function(e){
+          if(!root.contains(e.target)) close();
+        }, { passive:true });
 
-        // Item select
-        $all("#vtypePanel .vtypeItem").forEach(function(el){
-          el.addEventListener("click", function(){
-            var code = el.getAttribute("data-code");
-            var chosen = findVehicleType(code);
-            if (!chosen) return;
+        function selectCode(code){
+          var res = findType(code);
+          if(!res) return;
+          $("vehType").value = code;
+          $("vehTypeLabel").textContent = typeLabel(res.item);
+          $("vehTypeCode").textContent = code;
+          $("vehTypeThumb").innerHTML = typeIcon(res.group.kind);
 
-            $("vehType").value = code;
-            $("vtypeIcon").innerHTML = iconForType(code);
-            $("vtypeLabel").textContent = chosen.code + " — " + chosen.desc;
-            closePanel();
+          $all("#vehTypeMenu .vopt").forEach(function(el){
+            el.classList.toggle("active", el.getAttribute("data-code") === code);
+          });
+
+          close();
+        }
+
+        $all("#vehTypeMenu .vopt").forEach(function(opt){
+          opt.addEventListener("click", function(){
+            selectCode(opt.getAttribute("data-code"));
+          });
+          opt.addEventListener("keydown", function(ev){
+            if(ev.key === "Enter" || ev.key === " "){
+              ev.preventDefault();
+              selectCode(opt.getAttribute("data-code"));
+            }
+            if(ev.key === "Escape"){
+              ev.preventDefault();
+              close();
+              btn.focus();
+            }
           });
         });
+
+        btn.addEventListener("keydown", function(ev){
+          if(ev.key === "Escape"){
+            ev.preventDefault();
+            close();
+          }
+        });
       }
 
-      function findVehicleType(code){
-        var groups = vehicleTypes();
-        for (var g=0; g<groups.length; g++){
-          for (var i=0; i<groups[g].items.length; i++){
-            var it = groups[g].items[i];
-            if (it.code === code) {
-              return { code: it.code, desc: t(it.descKey), groupKey: groups[g].groupKey };
-            }
-          }
-        }
-        return null;
-      }
+      // ---- Demo data for other pages (unchanged MVP) ----
+      var DEMO = {
+        tolls: [
+          { name:"A2 Demo Segment", from:"Poznan", to:"Warsaw", country:"PL", class:"N3", axles:5, estimate:"38.5 EUR" },
+          { name:"A1 Demo Segment", from:"Lodz", to:"Gdansk", country:"PL", class:"N2", axles:4, estimate:"22.0 EUR" }
+        ],
+        fuel: [
+          { name:"FuelStop A1", brand:"PartnerX", city:"Warsaw", discount:"-8%", price:"1.54 EUR/L" },
+          { name:"TruckFuel Hub", brand:"PartnerY", city:"Lodz", discount:"-6%", price:"1.49 EUR/L" },
+          { name:"Highway Diesel Point", brand:"PartnerZ", city:"Poznan", discount:"-7%", price:"1.57 EUR/L" }
+        ],
+        hotels: [
+          { name:"Truck Rest Hotel", city:"Warsaw", type:"Motel", stars:3, parking:true },
+          { name:"Highway Inn", city:"Lodz", type:"Hotel", stars:4, parking:true },
+          { name:"City Sleep", city:"Poznan", type:"Hotel", stars:3, parking:false }
+        ],
+        nearby: [
+          { name:"Old Town", city:"Warsaw", category:"Sightseeing", open:true },
+          { name:"Museum of Transport", city:"Lodz", category:"Museum", open:false },
+          { name:"City Park", city:"Poznan", category:"Nature", open:true }
+        ]
+      };
 
       function render(route){
         if(ROUTES.indexOf(route) < 0) route = "vehicle";
@@ -1064,93 +1111,125 @@
         // ----- Vehicle -----
         if(route === "vehicle"){
           var v = getVehicle();
+
+          var trailerFields = '';
+          if(v.withTrailer){
+            trailerFields =
+              '<div class="field"><div class="label">' + escapeHtml(t("trailerPlate")) + '</div>' +
+                '<input id="vehTrailerPlate" class="input" value="' + escapeHtml(v.trailerPlate || "") + '" placeholder="TR1234XX">' +
+              '</div>' +
+              '<div class="field"><div class="label">' + escapeHtml(t("gtw")) + '</div>' +
+                '<select id="vehGtw" class="input">' + buildWeightOptions(v.gtw || "w_7512") + '</select>' +
+              '</div>';
+          }
+
           $("view").innerHTML =
-            '<h3 class="sectionTitle">'+escapeHtml(t("vehicleTitle"))+'</h3>'+
-            '<div class="item">'+
-              '<div class="itemSub">'+escapeHtml(t("vehicleDesc"))+'</div>'+
-              '<div class="hr"></div>'+
+            '<h3 class="sectionTitle">' + escapeHtml(t("vehicleTitle")) + '</h3>' +
+            '<div class="item">' +
+              '<div class="itemSub">' + escapeHtml(t("vehicleDesc")) + '</div>' +
+              '<div class="hr"></div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("plate"))+'</div>'+
-                '<input id="vehPlate" class="input" value="'+escapeHtml(v.plate || "")+'" placeholder="AB1234CD">'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("plate")) + '</div>' +
+                '<input id="vehPlate" class="input" value="' + escapeHtml(v.plate || "") + '" placeholder="AB1234CD">' +
+              '</div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("country"))+'</div>'+
-                '<select id="vehCountry" class="input"></select>'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("country")) + '</div>' +
+                '<select id="vehCountry" class="input">' + buildCountryOptions(v.country || "PL") + '</select>' +
+              '</div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("type"))+'</div>'+
-                '<div id="vehTypePicker"></div>'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("type")) + '</div>' +
+                renderVehicleTypeSelect(v.type || "N3") +
+              '</div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("fuelType"))+'</div>'+
-                '<select id="vehFuel" class="input"></select>'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("fuelType")) + '</div>' +
+                '<select id="vehFuel" class="input">' + buildFuelOptions(v.fuelType || "diesel") + '</select>' +
+              '</div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("emission"))+'</div>'+
-                '<select id="vehEmission" class="input"></select>'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("emission")) + '</div>' +
+                '<select id="vehEmission" class="input">' + buildEcoOptions(v.emission || "euro6") + '</select>' +
+              '</div>' +
 
-              '<div class="field"><div class="label">'+escapeHtml(t("axles"))+'</div>'+
-                '<select id="vehAxles" class="input"></select>'+
-              '</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("axles")) + '</div>' +
+                '<select id="vehAxles" class="input">' + buildAxleOptions(v.axles || "5") + '</select>' +
+              '</div>' +
 
-              '<div class="hint">'+escapeHtml(t("tipAxles"))+'</div>'+
+              '<div class="field"><div class="label">' + escapeHtml(t("gvwr")) + '</div>' +
+                '<select id="vehGvwr" class="input">' + buildWeightOptions(v.gvwr || "w_12p") + '</select>' +
+              '</div>' +
 
-              '<div class="row">'+
-                '<button class="btn" id="btnVehSave">💾 '+escapeHtml(t("save"))+'</button>'+
-                '<button class="btnGhost" id="btnVehReset">↺ '+escapeHtml(t("reset"))+'</button>'+
-              '</div>'+
+              '<div class="row">' +
+                '<button type="button" class="toggleBtn' + (v.withTrailer ? ' on' : '') + '" id="btnWithTrailer">' +
+                  '<span class="toggleDot" aria-hidden="true"></span>' +
+                  '<span>' + escapeHtml(t("withTrailer")) + '</span>' +
+                '</button>' +
+              '</div>' +
+
+              '<div id="trailerBlock">' + trailerFields + '</div>' +
+
+              '<div class="hint">' + escapeHtml(t("reqHint")) + '</div>' +
+
+              '<div class="row">' +
+                '<button class="btn" id="btnVehSave">💾 ' + escapeHtml(t("save")) + '</button>' +
+                '<button class="btnGhost" id="btnVehReset">↺ ' + escapeHtml(t("reset")) + '</button>' +
+              '</div>' +
             '</div>';
 
-          // Build dropdowns with translated labels
-          var countrySel = $("vehCountry");
-          buildOptions(
-            countrySel,
-            t("chooseCountry"),
-            COUNTRIES,
-            v.country || "",
-            function(code){ return countryName(code) + " (" + code + ")"; }
-          );
+          wireVehicleTypeSelect();
 
-          var fuelSel = $("vehFuel");
-          buildOptions(
-            fuelSel,
-            t("chooseFuel"),
-            FUEL_TYPES,
-            v.fuelType || "",
-            function(it){ return t(it.key); }
-          );
+          function rerenderTrailerBlock(withTrailer){
+            var block = $("trailerBlock");
+            if(!block) return;
+            if(!withTrailer){
+              block.innerHTML = "";
+              return;
+            }
+            block.innerHTML =
+              '<div class="field"><div class="label">' + escapeHtml(t("trailerPlate")) + '</div>' +
+                '<input id="vehTrailerPlate" class="input" value="' + escapeHtml((getVehicle().trailerPlate || "")) + '" placeholder="TR1234XX">' +
+              '</div>' +
+              '<div class="field"><div class="label">' + escapeHtml(t("gtw")) + '</div>' +
+                '<select id="vehGtw" class="input">' + buildWeightOptions((getVehicle().gtw || "w_7512")) + '</select>' +
+              '</div>';
+          }
 
-          var ecoSel = $("vehEmission");
-          buildOptions(
-            ecoSel,
-            t("chooseEco"),
-            ECO_CLASSES,
-            v.emission || "",
-            function(it){ return t(it.key); }
-          );
+          $("btnWithTrailer").addEventListener("click", function(){
+            var cur = getVehicle();
+            cur.withTrailer = !cur.withTrailer;
+            // keep current form values to not lose edits
+            cur.plate = $("vehPlate").value.trim();
+            cur.country = ($("vehCountry").value || "PL").trim();
+            cur.type = ($("vehType").value || "N3").trim();
+            cur.fuelType = ($("vehFuel").value || "diesel").trim();
+            cur.emission = ($("vehEmission").value || "euro6").trim();
+            cur.axles = ($("vehAxles").value || "5").trim();
+            cur.gvwr = ($("vehGvwr").value || "w_12p").trim();
 
-          var axlesSel = $("vehAxles");
-          buildOptions(
-            axlesSel,
-            t("chooseAxles"),
-            AXLES,
-            v.axles || "",
-            function(ax){ return ax; }
-          );
+            setVehicle(cur);
 
-          // Vehicle type custom picker with warm “images”
-          renderVehicleTypePicker($("vehTypePicker"), v.type || "N3");
+            // update button style + trailer block without full render
+            this.classList.toggle("on", cur.withTrailer);
+            rerenderTrailerBlock(cur.withTrailer);
+          });
 
           $("btnVehSave").addEventListener("click", function(){
             var nv = {
               plate: $("vehPlate").value.trim(),
-              country: ($("vehCountry").value || "").trim(),
-              type: ($("vehType").value || "").trim(),          // EU code
-              fuelType: ($("vehFuel").value || "").trim(),      // code
-              emission: ($("vehEmission").value || "").trim(),  // code
-              axles: ($("vehAxles").value || "").trim()
+              country: ($("vehCountry").value || "PL").trim(),
+              type: ($("vehType").value || "N3").trim(),
+              fuelType: ($("vehFuel").value || "diesel").trim(),
+              emission: ($("vehEmission").value || "euro6").trim(),
+              axles: ($("vehAxles").value || "5").trim(),
+              gvwr: ($("vehGvwr").value || "w_12p").trim(),
+              withTrailer: $("btnWithTrailer").classList.contains("on"),
+              trailerPlate: "",
+              gtw: "w_7512"
             };
+
+            if(nv.withTrailer){
+              nv.trailerPlate = ($("vehTrailerPlate") ? $("vehTrailerPlate").value.trim() : "");
+              nv.gtw = ($("vehGtw") ? $("vehGtw").value : "w_7512");
+            }
+
             setVehicle(nv);
             toast(t("saved"));
           });
@@ -1168,19 +1247,19 @@
         if(route === "navigator"){
           var posText = pos ? (pos.lat.toFixed(5)+", "+pos.lng.toFixed(5)) : t("posUnknown");
           $("view").innerHTML =
-            '<h3 class="sectionTitle">'+escapeHtml(t("nav"))+'</h3>'+
-            '<div class="item">'+
-              '<div class="itemTitle">Best navigators (shortlist)</div>'+
-              '<div class="itemSub">We will integrate multiple providers and choose best per route.</div>'+
-              '<div class="row">'+
-                '<span class="chip">Google Maps</span><span class="chip">Waze</span><span class="chip">HERE WeGo</span><span class="chip">TomTom</span><span class="chip">Sygic</span>'+
-              '</div>'+
-            '</div>'+
-            '<div class="hr"></div>'+
-            '<div class="item">'+
-              '<div class="itemTitle">Position</div>'+
-              '<div class="itemSub">'+escapeHtml(posText)+'</div>'+
-              '<div class="row"><button class="btn" id="btnRouteDemo">▶ Route demo</button></div>'+
+            '<h3 class="sectionTitle">' + escapeHtml(t("nav")) + '</h3>' +
+            '<div class="item">' +
+              '<div class="itemTitle">Best navigators (shortlist)</div>' +
+              '<div class="itemSub">We will integrate multiple providers and choose best per route.</div>' +
+              '<div class="row">' +
+                '<span class="chip">Google Maps</span><span class="chip">Waze</span><span class="chip">HERE WeGo</span><span class="chip">TomTom</span><span class="chip">Sygic</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="hr"></div>' +
+            '<div class="item">' +
+              '<div class="itemTitle">Position</div>' +
+              '<div class="itemSub">' + escapeHtml(posText) + '</div>' +
+              '<div class="row"><button class="btn" id="btnRouteDemo">▶ Route demo</button></div>' +
             '</div>';
 
           $("btnRouteDemo").addEventListener("click", function(){ toast("Route flow (demo)"); });
@@ -1214,7 +1293,7 @@
             '<div class="hr"></div><div class="list">'+listT+'</div>';
 
           $all(".payBtn").forEach(function(b){
-            b.addEventListener("click", function(){ toast("Demo payment (stub)"); });
+            b.addEventListener("click", function(){ toast(t("demoPay")); });
           });
           return;
         }
@@ -1244,7 +1323,7 @@
             '<div class="item"><div class="itemTitle">Discounted fuel</div><div class="itemSub">UTA/DKV/E100-like demo.</div></div>'+
             '<div class="hr"></div><div class="list">'+listF+'</div>';
 
-          $all(".fuelBtn").forEach(function(b){ b.addEventListener("click", function(){ toast("Demo fuel (stub)"); }); });
+          $all(".fuelBtn").forEach(function(b){ b.addEventListener("click", function(){ toast(t("demoFuel")); }); });
           $all(".creditBtn").forEach(function(b){ b.addEventListener("click", function(){ toast("Credit (coming soon)"); }); });
           return;
         }
@@ -1275,7 +1354,7 @@
             '<div class="item"><div class="itemTitle">Driver rest</div><div class="itemSub">Demo list. Next: booking API.</div></div>'+
             '<div class="hr"></div><div class="list">'+listH+'</div>';
 
-          $all(".hotelBtn").forEach(function(b){ b.addEventListener("click", function(){ toast("Demo booking (stub)"); }); });
+          $all(".hotelBtn").forEach(function(b){ b.addEventListener("click", function(){ toast(t("demoHotel")); }); });
           return;
         }
 
@@ -1304,7 +1383,7 @@
             '<div class="item"><div class="itemTitle">Places nearby</div><div class="itemSub">Demo. Next: Places API.</div></div>'+
             '<div class="hr"></div><div class="list">'+listN+'</div>';
 
-          $all(".nearBtn").forEach(function(b){ b.addEventListener("click", function(){ toast("Demo route (stub)"); }); });
+          $all(".nearBtn").forEach(function(b){ b.addEventListener("click", function(){ toast(t("demoNearby")); }); });
           return;
         }
       }
@@ -1356,7 +1435,7 @@
         $("lang").addEventListener("change", function(e){
           safeSet(KEY_LANG, e.target.value);
           applyTexts();
-          // Important: rerender current screen so dropdown labels re-translate
+          // Re-render to translate dropdown labels/options and vehicle type menu
           render(getRouteFromHash());
         });
 
